@@ -1,7 +1,7 @@
 # 忆枢 memory-lattice
 
 [![ci](https://github.com/Lumivox-wiz/memory-lattice/actions/workflows/ci.yml/badge.svg)](./.github/workflows/ci.yml)
-[![version](https://img.shields.io/badge/version-0.2.0-blue.svg)](./CHANGELOG.md)
+[![version](https://img.shields.io/github/package-json/v/Lumivox-wiz/memory-lattice?color=blue)](./CHANGELOG.md)
 [![node](https://img.shields.io/badge/node-%E2%89%A522-brightgreen.svg)](./package.json)
 [![license](https://img.shields.io/badge/license-MIT-green.svg)](./LICENSE)
 
