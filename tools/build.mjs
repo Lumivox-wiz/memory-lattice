@@ -43,7 +43,6 @@ if (result.errors.length) {
   console.error('build failed')
   process.exit(1)
 }
-writeFileSync(OUT + '.check', '')
 // 自检：产物必须是合法脚本（wrapper 拼接错误会在这里炸出来，而不是到 DSH 里静默白屏）
 await import('node:child_process').then(({ execFileSync }) => {
   execFileSync(process.execPath, ['--check', OUT], { stdio: 'pipe' })
