@@ -82,7 +82,7 @@
       "level": "medium",
       "files": "read-write",
       "network": "limited",
-      "commands": "node",
+      "commands": [],
       "credentials": [],
       "externalServices": [],
       "notes": "Files: reads/writes only inside the vault under $DSH_HOME/memory-lattice (config vaultDir outside $DSH_HOME is rejected; use MEMORY_LATTICE_DIR env to relocate). Local UI API: every route except POST /session requires a per-process session token (cookie or X-ML-Token); without it the request gets 401. Network: no direct outbound; only when distillation or persona synthesis is explicitly enabled AND a provider is chosen does the plugin send text (up to 12,000 chars/turn for distillation) through the host LLM service (both default OFF). No telemetry, no third-party endpoints, no credentials."

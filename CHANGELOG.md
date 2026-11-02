@@ -36,9 +36,10 @@
 ### 交付
 
 - 加入 `LICENSE`（MIT）、`.gitignore`、`.gitattributes`（全仓 LF，`.ps1` 走 CRLF）、`SECURITY.md`、`.github/workflows/ci.yml`。
-- CI：`npm ci` → 冒烟（232 项）→ 负向控制（14 条，改坏必须变红）→ `lib/client.js` 与源码一致。
-- 冒烟新增「开源交付件元数据」守卫：LICENSE 无占位符、作者与 `package.json` 一致、仓库地址齐全、README 无 `your-name` 占位、发布清单排除预览产物、lockfile 每条可解析。
+- CI：`npm ci` → 冒烟（236 项）→ 负向控制（15 条，改坏必须变红）→ `lib/client.js` 与源码一致。
+- 冒烟新增「开源交付件元数据」守卫：LICENSE 无占位符、作者与 `package.json` 一致、仓库地址齐全、README 无 `your-name` 占位、发布清单排除预览产物、lockfile 每条可解析、权限清单不索取凭据 / 外部服务 / 未使用的子进程能力。
 - `npm pack` 体积 698KB → 163KB（预览 bundle 与截图不再进包）。
+- 权限清单 `commands` 由 `node` 改为 `[]`：插件运行时从不启子进程，原来属于过度声明。
 
 ## [0.1.0] - 2026-11-01
 

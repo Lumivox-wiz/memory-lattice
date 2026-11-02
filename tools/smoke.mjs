@@ -1081,6 +1081,12 @@ console.log('\n[17] encrypted backup + incremental restore + per-kind count cap'
   const lock = JSON.parse(read('package-lock.json'))
   const noResolved = Object.entries(lock.packages || {}).filter(([k, v]) => k && !v.resolved && !v.link).map(([k]) => k)
   check('lockfile 每条都有 resolved（npm ci 可复现）', noResolved.length === 0, noResolved.slice(0, 5).join(','))
+  // 权限清单必须与真实行为一致：不索取凭据 / 不声明外部服务 / 不声明没用到的子进程能力
+  const perm = pkg.dsh?.permissions || {}
+  check('权限清单不索取凭据', Array.isArray(perm.credentials) && perm.credentials.length === 0, JSON.stringify(perm.credentials))
+  check('权限清单不声明外部服务', Array.isArray(perm.externalServices) && perm.externalServices.length === 0, JSON.stringify(perm.externalServices))
+  check('权限清单不声明没用到的子进程能力', Array.isArray(perm.commands) && perm.commands.length === 0, JSON.stringify(perm.commands))
+  check('权限说明写清了边界', String(perm.notes || '').length > 80, String(perm.notes || '').slice(0, 40))
 }
 
 closeAllDb()

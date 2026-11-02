@@ -19,7 +19,7 @@ jobs:
       - name: 安装依赖（含 peer：dsh-tools / dsh-llm / cordis）
         run: npm ci
 
-      - name: 冒烟（232 项守卫）
+      - name: 冒烟（236 项守卫）
         run: npm test
 
       - name: 负向控制（守卫必须能红）
