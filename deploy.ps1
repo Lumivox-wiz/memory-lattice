@@ -32,7 +32,7 @@ $dst = Join-Path $profileDir 'node_modules/memory-lattice'
 
 # ① 拷贝（排除 .git / node_modules / 负向控制的临时备份 / 预览产物）
 if (Test-Path $dst) { Remove-Item $dst -Recurse -Force }
-robocopy $src $dst /E /XD .git node_modules .github /XF deploy.ps1 *.neg *.check *.bak preview-bundle.js preview-graph.html /NFL /NDL /NJH /NJS /NP | Out-Null
+robocopy $src $dst /E /XD .git node_modules .github /XF deploy.ps1 *.neg *.check *.bak preview-bundle.js preview-graph.html preview-*.png /NFL /NDL /NJH /NJS /NP | Out-Null
 if ($LASTEXITCODE -ge 8) { throw "robocopy 失败：$LASTEXITCODE" }
 
 # ② 语法自检（入口 + 全部 lib，含打包产物）
