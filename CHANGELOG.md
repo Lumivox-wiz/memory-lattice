@@ -2,6 +2,14 @@
 
 按 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/) 组织，版本号遵循语义化版本。
 
+## [0.2.6] - 2026-11-03
+
+补齐发布链路的最后一环（无功能改动）。
+
+### Changed
+
+- `publish.yml` 在发完 npm 后自动建 GitHub Release 并挂上预构建 tarball。此前 `v0.2.3` ~ `v0.2.5` **只有 tag、没有 Release**，而市场条目里的 `tarball:` 指向的就是 Release 资产 —— 链接会是 404。
+
 ## [0.2.5] - 2026-11-03
 
 修掉一条会在 CI 上空转的守卫（无功能改动）。

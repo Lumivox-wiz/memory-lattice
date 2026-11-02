@@ -10,7 +10,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write # 发 npm + 建 Release（挂 tarball）
   id-token: write # OIDC —— 缺了这行 npm 拿不到短期凭据，会退成 ENEEDAUTH
 
 jobs:
@@ -41,3 +41,12 @@ jobs:
       - run: npm ci
       - run: npm test # 发布前跑满守卫，红了就不发
       - run: npm publish # 无 token、无 --otp；provenance 自动生成
+
+      # 只有 tag 没有 Release 的话，市场条目里引用的 tarball 链接会是 404
+      - name: 建 GitHub Release 并挂预构建 tarball
+        if: startsWith(github.ref, 'refs/tags/')
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          npm pack --pack-destination .
+          gh release create "$GITHUB_REF_NAME" --generate-notes --title "忆枢 $GITHUB_REF_NAME" ./*.tgz

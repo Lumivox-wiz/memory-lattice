@@ -1196,6 +1196,8 @@ console.log('\n[18] 自动定时备份：目录越界回落 / 口令不落盘 / 
   check('发布工作流不设 registry-url（否则退回 token 认证）', !/registry-url/.test(pub))
   check('发布前会跑满守卫', /run:\s*npm test/.test(pub))
   check('发布工作流校验 tag 与版本号一致', /npm pkg get version/.test(pub) && /refs\/tags\//.test(pub))
+  // 只打 tag 不建 Release 的话，市场条目引用的 tarball 链接会 404
+  check('发布后建 GitHub Release 并挂 tarball', /gh release create/.test(pub) && /npm pack/.test(pub) && /contents:\s*write/.test(pub))
 }
 
 closeAllDb()
