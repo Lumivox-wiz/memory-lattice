@@ -9,9 +9,10 @@ jobs:
   test:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      # 固定到 commit SHA（供应链：tag 可被移动，SHA 不可）
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: '22'
           cache: npm
@@ -19,7 +20,10 @@ jobs:
       - name: 安装依赖（含 peer：dsh-tools / dsh-llm / cordis）
         run: npm ci
 
-      - name: 冒烟（236 项守卫）
+      - name: 供应链审计（生产依赖）
+        run: npm audit --omit=dev
+
+      - name: 冒烟（237 项守卫）
         run: npm test
 
       - name: 负向控制（守卫必须能红）

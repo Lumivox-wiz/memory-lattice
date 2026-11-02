@@ -1077,7 +1077,15 @@ console.log('\n[17] encrypted backup + incremental restore + per-kind count cap'
   check('LICENSE 与 package.json 的作者一致', !!holder && pkg.author.includes(holder[2].trim()), `${holder && holder[2]} vs ${pkg.author}`)
   check('package.json 有仓库地址', !!pkg.repository?.url && !!pkg.homepage && !!pkg.bugs?.url)
   check('README 徽章没有 your-name 占位', !read('README.md').includes('your-name'))
-  check('package.json 发布清单不含预览产物', (pkg.files || []).some((f) => f.startsWith('!tools/')), JSON.stringify(pkg.files))
+  check('package.json 发布清单只含运行件与导入导出 CLI', (() => {
+    const f = pkg.files || []
+    return !f.includes('src') && !f.includes('tools') && f.includes('tools/import-export.mjs')
+      && !f.some((x) => /preview|\.png|smoke|neg-|build/.test(x))
+  })(), JSON.stringify(pkg.files))
+  check('.gitignore 盖住隐私文件模式（库/密钥/环境变量/预览产物）', (() => {
+    const gi = read('.gitignore')
+    return ['.env', '.pem', '.key', '.db', '.sqlite', '.wal', '.shm', 'preview-*.png'].every((p) => gi.includes(p))
+  })())
   const lock = JSON.parse(read('package-lock.json'))
   const noResolved = Object.entries(lock.packages || {}).filter(([k, v]) => k && !v.resolved && !v.link).map(([k]) => k)
   check('lockfile 每条都有 resolved（npm ci 可复现）', noResolved.length === 0, noResolved.slice(0, 5).join(','))

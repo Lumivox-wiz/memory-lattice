@@ -110,7 +110,9 @@ if (location.hash === '#config') {
       const wrap = document.querySelector('.ml-graph-full')
       const diag = document.createElement('pre')
       diag.id = 'diag'
-      diag.style.cssText = 'position:fixed;bottom:0;left:0;z-index:99999;background:#000c;color:#0f0;font-size:11px;margin:0;padding:4px;max-height:40vh;overflow:auto'
+      // 诊断只供 --dump-dom 读（console.log 输出 JSON），截图里不能出现：
+      // display:none 对 dump-dom 不可见地透明，但对 --screenshot 完全隐藏
+      diag.style.cssText = 'display:none'
       if (wrap) {
         const cs = getComputedStyle(wrap)
         const wraps = [...document.querySelectorAll('.ml-graph-wrap')].map((w) => {

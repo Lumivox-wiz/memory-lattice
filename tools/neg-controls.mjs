@@ -24,6 +24,9 @@ const cases = [
   { name: '权限清单多报凭据', file: 'package.json', from: '"credentials": [],', to: '"credentials": ["*"],', expect: '权限清单不索取凭据' },
   { name: 'LICENSE 留着模板占位符', file: 'LICENSE', from: 'Copyright (c) 2026 澪梦 (Lumivox-wiz)', to: 'Copyright (c) <year> <copyright holders>', expect: 'LICENSE 没有占位符' },
   { name: 'lockfile 缺 resolved（npm ci 不可复现）', file: 'package-lock.json', from: '"resolved": "https://registry.npmjs.org/@deepseek-ai/cordis/-/cordis-4.0.5.tgz",\n      "integrity": "sha512-Sktq5axy0owk9PdnivBRNOJjHEVEibCt0+TDDZcv0+UH2KS1M910fX4kn5y45YFsrpZIi1mJf/1s5VzywMUnyg==",', to: '"integrity": "sha512-Sktq5axy0owk9PdnivBRNOJjHEVEibCt0+TDDZcv0+UH2KS1M910fX4kn5y45YFsrpZIi1mJf/1s5VzywMUnyg==",', expect: 'lockfile 每条都有 resolved' },
+  // 第三轮发布前复核（发布清单收窄 / gitignore 隐私模式）
+  { name: '发布清单把 src 与整套 tools 放回去', file: 'package.json', from: '"tools/import-export.mjs",', to: '"src",\n    "tools",\n    "tools/import-export.mjs",', expect: '发布清单只含运行件' },
+  { name: '.gitignore 丢掉数据库与密钥模式', file: '.gitignore', from: '.env*\n*.pem\n*.key\n*.db\n*.sqlite\n*.wal\n*.shm\n', to: '.env*\n*.pem\n', expect: '.gitignore 盖住隐私文件模式' },
 ]
 
 let bad = 0

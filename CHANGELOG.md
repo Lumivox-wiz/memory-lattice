@@ -2,6 +2,18 @@
 
 按 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/) 组织，版本号遵循语义化版本。
 
+## [0.2.1] - 2026-11-02
+
+第三轮发布前复核（仓库与发布卫生），运行时代码零改动。
+
+### 交付
+
+- `.gitignore` 补隐私模式：`.env*` / `*.pem` / `*.key` / `*.db` / `*.sqlite` / `*.wal` / `*.shm`，防止库文件与密钥误提交。
+- `tools/preview-*.png` 不再入库（`npm run preview` 本地再生），文档截图只保留 `docs/screenshots/`；星云截图重新生成，去掉底部残留的调试 JSON。
+- `package.json` 的 `files` 收窄到运行件 + 导入导出 CLI：`src/` 与构建 / 冒烟 / 负向 / 预览工具不再进 npm 包。
+- CI 固定 `actions/checkout` / `actions/setup-node` 到 commit SHA（v4.4.0），新增 `npm audit --omit=dev` 供应链审计步骤。
+- 冒烟新增守卫：发布清单只含运行件与导入导出 CLI、`.gitignore` 覆盖隐私文件模式（237 项）；负向控制对应增加 2 条（18 条；0.2.0 记为 15 条系漏数，实为 16 条）。
+
 ## [0.2.0] - 2026-11-02
 
 「已知未做」清空 + 安全复核第二轮 + GitHub 交付。
@@ -36,7 +48,7 @@
 ### 交付
 
 - 加入 `LICENSE`（MIT）、`.gitignore`、`.gitattributes`（全仓 LF，`.ps1` 走 CRLF）、`SECURITY.md`、`.github/workflows/ci.yml`。
-- CI：`npm ci` → 冒烟（236 项）→ 负向控制（15 条，改坏必须变红）→ `lib/client.js` 与源码一致。
+- CI：`npm ci` → 冒烟（236 项）→ 负向控制（16 条，改坏必须变红）→ `lib/client.js` 与源码一致。
 - 冒烟新增「开源交付件元数据」守卫：LICENSE 无占位符、作者与 `package.json` 一致、仓库地址齐全、README 无 `your-name` 占位、发布清单排除预览产物、lockfile 每条可解析、权限清单不索取凭据 / 外部服务 / 未使用的子进程能力。
 - `npm pack` 体积 698KB → 163KB（预览 bundle 与截图不再进包）。
 - 权限清单 `commands` 由 `node` 改为 `[]`：插件运行时从不启子进程，原来属于过度声明。

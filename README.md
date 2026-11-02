@@ -153,13 +153,13 @@ BM25 是字面匹配，「换个说法就召回不到」是结构性死角。两
 ```bash
 npm ci                 # 安装（含 peer：dsh-tools / dsh-llm / cordis）
 npm run build          # esbuild 打包客户端 → lib/client.js（自检语法）
-npm test               # 236 项守卫（含开源交付件元数据检查）
-npm run neg            # 负向控制：逐条改坏守卫，确认对应测试真的会红（15 条）
-npm run preview        # 用假数据渲染 UI 并截图到 tools/preview-*.png（改观感时用）
+npm test               # 237 项守卫（含开源交付件元数据检查）
+npm run neg            # 负向控制：逐条改坏守卫，确认对应测试真的会红（18 条）
+npm run preview        # 用假数据渲染 UI 并截图到 tools/preview-*.png（改观感时用；不入库，文档截图在 docs/screenshots/）
 ```
 
-- CI（`.github/workflows/ci.yml`）：`npm ci` → 冒烟 → 负向控制 → 校验「`lib/client.js` 与源码一致」。
-- 发 npm：`npm publish`（`publishConfig.access` 已是 public，`files` 只含运行所需文件，预览产物与截图已排除）。
+- CI（`.github/workflows/ci.yml`）：`npm ci` → `npm audit`（生产依赖）→ 冒烟 → 负向控制 → 校验「`lib/client.js` 与源码一致」；Actions 固定到 commit SHA。
+- 发 npm：`npm publish`（`publishConfig.access` 已是 public，`files` 只含运行件与导入导出 CLI）。
 
 ```powershell
 pwsh -File deploy.ps1              # 拷贝进 profile + 注册 bundle（DSH_HOME 或 ~/.dsh）
