@@ -2,6 +2,16 @@
 
 按 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/) 组织，版本号遵循语义化版本。
 
+## [0.2.3] - 2026-11-03
+
+发布方式改为 npm Trusted Publishing（OIDC）。
+
+### Changed
+
+- 新增 `.github/workflows/publish.yml`：push `v*` 标签或手动触发时，先跑满守卫（257 项）与负向控制，再通过 OIDC 发布。
+- **发布不再需要凭据**：npm 账号已把本仓库注册为 trusted publisher，CI 里 `npm publish` 不用 `NPM_TOKEN`、不用 2FA 验证码，且每次发布自动附带 provenance（可验证这个包确实来自本仓库的某次构建）。
+- 本机不再保存 npm token（旧的发布 token 已作废/撤销）。
+
 ## [0.2.2] - 2026-11-02
 
 补上「已知未做」第 2 条：自动定时备份（此前只能手动点，或自己把 CLI 挂到系统计划任务）。
