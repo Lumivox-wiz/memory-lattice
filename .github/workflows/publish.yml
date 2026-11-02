@@ -1,0 +1,29 @@
+name: publish
+
+# 用 npm Trusted Publishing（OIDC）发布：不需要 NPM_TOKEN，也不需要 2FA 验证码。
+# 前提：npm 包设置里已把本仓库 + 本工作流注册为 trusted publisher
+#   npmjs.com → package/memory-lattice → Settings → Trusted Publisher → GitHub Actions
+#   字段：owner=Lumivox-wiz / repo=memory-lattice / workflow=publish.yml / environment 留空
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write # OIDC —— 缺了这行 npm 拿不到短期凭据，会退成 ENEEDAUTH
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+        # 刻意不设 registry-url：设了会让 setup-node 注入占位 NODE_AUTH_TOKEN，
+        # npm 见到该变量就走 token 认证，OIDC 交换不会发生（表现为 ENEEDAUTH）。
+      - run: npm install -g npm@latest # Trusted Publishing 需要 npm >= 11.5.1
+      - run: npm ci
+      - run: npm test # 发布前跑满守卫，红了就不发
+      - run: npm publish # 无 token、无 --otp；provenance 自动生成
