@@ -205,16 +205,19 @@ node tools/migrate-eternal.mjs               # 已审核卡 → LTM，按卡龄�
 
 ## 发布到 GitHub
 
+本仓库已 `git init` 并完成首次提交（分支 `main`，远端已指向 `Lumivox-wiz/memory-lattice`）。上传只需两步：
+
+1. 在 GitHub 上**建一个空仓库**（仓库名 `memory-lattice`，不要勾选 README / .gitignore / License —— 本地已有）。
+2. 推送：
+
 ```bash
-git init && git add -A && git commit -m "feat: 忆枢 memory-lattice 0.2.0"
-git branch -M main
-git remote add origin https://github.com/Lumivox-wiz/memory-lattice.git
 git push -u origin main
 ```
 
-- CI（`.github/workflows/ci.yml`）会在 push/PR 上跑：`npm ci` → 冒烟 → 负向控制 → 「打包产物与源码一致」。
-- 徽章里的仓库名若不是 `memory-lattice`，把 README 顶部四个链接一起改掉。
-- 想发 npm 的话：`npm publish --access public`（`files` 已限制为运行所需文件）。
+- CI（`.github/workflows/ci.yml`）在 push / PR 上跑：`npm ci` → 冒烟（225 项）→ 负向控制（守卫必须能红）→ 「`lib/client.js` 与源码一致」。
+- CI 用的是公共 npm 上的 `@deepseek-ai/*`（`0.1.0-rc.8` / `cordis 4.0.5`），`package-lock.json` 已重新生成，每条都有 `resolved` + `integrity`，`npm ci` 可复现。
+- 徽章与 `package.json` 里的仓库地址若改名，一起改（README 顶部徽章 + `repository/homepage/bugs`）。
+- 发 npm：`npm publish`（`publishConfig.access` 已是 public，`files` 只含运行所需文件，预览产物与截图已排除）。
 
 ## License
 

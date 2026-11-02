@@ -16,6 +16,9 @@
     "lib",
     "src",
     "tools",
+    "!tools/preview-bundle.js",
+    "!tools/preview-graph.html",
+    "!tools/*.png",
     "cordis.patch.yml",
     "README.md",
     "LICENSE",
@@ -103,5 +106,8 @@
   "homepage": "https://github.com/Lumivox-wiz/memory-lattice#readme",
   "bugs": {
     "url": "https://github.com/Lumivox-wiz/memory-lattice/issues"
+  },
+  "publishConfig": {
+    "access": "public"
   }
 }
