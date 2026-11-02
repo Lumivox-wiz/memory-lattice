@@ -6,7 +6,9 @@ import { fileURLToPath } from 'node:url'
 const ROOT = fileURLToPath(new URL('..', import.meta.url)).replace(/[\\/]$/, '')
 const cases = [
   { name: '向量通道失效（sem 恒 0）', file: 'lib/store.js', from: 'const sem = semRaw > SEMANTIC_FLOOR ? Math.min(1, (semRaw - SEMANTIC_FLOOR) / SEMANTIC_SPAN) : 0', to: 'const sem = 0', expect: '向量通道补回' },
-  { name: 'lex 不夹紧（融合会压低分数）', file: 'lib/store.js', from: 'const lex = literalOk ? Math.min(1, Math.sqrt(bm25 / qIdfSum)) : 0', to: 'const lex = literalOk ? Math.sqrt(bm25 / qIdfSum) : 0', expect: '不会压低' },
+  // +2：只去掉夹紧时「能否被抓到」取决于语料统计（sqrt(bm25/qIdfSum) 是否 >1），
+  // CI 与本机曾出现不一致 —— 加个偏移让 lex 一定越界，缺陷暴露不靠运气。
+  { name: 'lex 不夹紧（融合反而压低字面命中）', file: 'lib/store.js', from: 'const lex = literalOk ? Math.min(1, Math.sqrt(bm25 / qIdfSum)) : 0', to: 'const lex = literalOk ? Math.sqrt(bm25 / qIdfSum) + 2 : 0', expect: '不会压低' },
   { name: '导入失去幂等（不看内容指纹）', file: 'lib/importer.js', from: "if (mode !== 'new' && sigs.has(sig)) { skipped++; continue }", to: 'if (false) { skipped++; continue }', expect: '重复导入幂等' },
   { name: '整库替换不校验确认', file: 'lib/importer.js', from: "if (mode === 'replace' && confirm !== 'REPLACE') return fail(", to: "if (false) return fail(", expect: '需要 confirm' },
   { name: '核心层标记失效', file: 'lib/api.js', from: 'core: isCoreKind(k), days: map[k] ?? null, max: counts[k] ?? null', to: 'core: false, days: map[k] ?? null, max: counts[k] ?? null', expect: '核心层被标记' },
@@ -39,8 +41,9 @@ const cases = [
   { name: '发布工作流设了 registry-url（OIDC 被顶掉）', file: '.github/workflows/publish.yml', from: "          node-version: '22'", to: "          node-version: '22'\n          registry-url: 'https://registry.npmjs.org'", expect: '发布工作流不设 registry-url' },
   { name: '发布工作流丢了 id-token: write', file: '.github/workflows/publish.yml', from: '  id-token: write', to: '  id-token: read', expect: '发布工作流声明 id-token' },
   { name: '发布工作流不再校验版本号（tag 可以名不副实）', file: '.github/workflows/publish.yml', from: 'npm pkg get version', to: 'npm pkg get name', expect: '发布工作流校验 tag 与版本号一致' },
-  { name: 'README 守卫数写回旧值', file: 'README.md', from: '# 264 项守卫', to: '# 237 项守卫', expect: 'README 声明的守卫数与实测一致' },
-  { name: 'README 负向控制数写回旧值', file: 'README.md', from: '（30 条）', to: '（18 条）', expect: 'README 声明的负向控制数与实际一致' },
+  { name: '语义通道静默失效（融合守卫会空转成永远绿）', file: 'lib/vectors.js', from: '  const idx = index || getIndex(root)', to: '  const idx = null', expect: '对比时语义通道确实可用' },
+  { name: 'README 守卫数写回旧值', file: 'README.md', from: '# 265 项守卫', to: '# 237 项守卫', expect: 'README 声明的守卫数与实测一致' },
+  { name: 'README 负向控制数写回旧值', file: 'README.md', from: '（31 条）', to: '（18 条）', expect: 'README 声明的负向控制数与实际一致' },
 ]
 
 let bad = 0

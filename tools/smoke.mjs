@@ -810,9 +810,18 @@ console.log('\n[16] vector recall + import/migration + retention meta')
 
   // 融合只会给字面命中「加证据」、绝不会压低它（否则向量会把好结果挤掉）
   const q2 = '证书校验失败'
+  // 先同步建一次索引：getIndex 有 3s 签名缓存，慢机器上可能刚好过期，
+  // 那时 sem 恒 0、融合前后分数完全相等 —— 这条守卫就变成永远绿的空转。
+  vectors.warmIndex(vRoot)
   const baseHits = store.search(vRoot, q2, { layers: ['ltm'], vector: false, minScore: 0 })
   const fusedHits = store.search(vRoot, q2, { layers: ['ltm'], vector: true, minScore: 0 })
   const baseScore = new Map(baseHits.map((h) => [h.id, h._score]))
+  // 反空转：若语义通道没给出任何分（索引不可用），融合前后分数恒等，
+  // 下面那条「不会压低」就永远绿 —— CI 上真的发生过一次。
+  const semMap = vectors.semanticScores(vRoot, q2)
+  check('对比时语义通道确实可用（守卫不空转）',
+    !!semMap && baseHits.some((h) => (semMap.get(h.id) || 0) > 0),
+    semMap ? [...semMap].map(([k, s]) => `${k}:${s.toFixed(2)}`).join(',') : 'semanticScores=null')
   const lowered = fusedHits.filter((h) => baseScore.has(h.id) && h._score < baseScore.get(h.id))
   check('向量不会压低任何字面命中的分数', lowered.length === 0, lowered.map((h) => `${h.id}:${h._score}<${baseScore.get(h.id)}`).join(','))
   check('字面命中的集合不因开向量而丢失', baseHits.every((h) => fusedHits.some((x) => x.id === h.id)), baseHits.map((h) => h.id).join(','))
