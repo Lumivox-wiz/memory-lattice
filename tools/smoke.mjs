@@ -1166,10 +1166,42 @@ console.log('\n[18] 自动定时备份：目录越界回落 / 口令不落盘 / 
   check('配置 schema 里没有任何口令字段', !/passphrase/i.test(schemaBlock), (schemaBlock.match(/passphrase/i) || [''])[0])
   check('自动备份定时器 unref 且会被清理', /backupTimer\.unref\(\)/.test(idx) && /clearInterval\(backupTimer\)/.test(idx))
   check('口令来源常量指向环境变量', backup.BACKUP_PASS_ENV === 'MEMORY_LATTICE_BACKUP_PASSPHRASE')
+
+  // ---------- ⑦ 交付纪律（CI / 发布链路不许悄悄退化）----------
+  const wfDir = new URL('../.github/workflows/', import.meta.url)
+  const wfFiles = readdirSync(wfDir).filter((f) => /\.ya?ml$/.test(f))
+  const wf = Object.fromEntries(wfFiles.map((f) => [f, readFileSync(new URL(f, wfDir), 'utf8')]))
+  const unpinned = []
+  for (const [f, txt] of Object.entries(wf)) {
+    for (const m of txt.matchAll(/uses:\s*([^\s#]+)/g)) {
+      const ref = m[1]
+      if (ref.startsWith('./') || ref.startsWith('docker://')) continue
+      if (!/^[0-9a-f]{40}$/.test((ref.split('@')[1] || ''))) unpinned.push(`${f} → ${ref}`)
+    }
+  }
+  check('工作流里的 action 都固定到 commit SHA', unpinned.length === 0, unpinned.join(' | '))
+
+  // 先剥注释再扫：注释里会解释「为什么不设 registry-url」，不剥就会被当成真配置
+  const pub = (wf['publish.yml'] || '').replace(/#[^\n]*/g, '')
+  check('发布工作流声明 id-token: write（OIDC）', /id-token:\s*write/.test(pub))
+  check('发布工作流不设 registry-url（否则退回 token 认证）', !/registry-url/.test(pub))
+  check('发布前会跑满守卫', /run:\s*npm test/.test(pub))
+  check('发布工作流校验 tag 与版本号一致', /npm pkg get version/.test(pub) && /refs\/tags\//.test(pub))
 }
 
 closeAllDb()
 try { rmSync(ROOT, { recursive: true, force: true }) } catch { /* Windows 句柄延迟，无妨 */ }
+
+// README 里手写的数量会漂移（237 → 257 就是这么来的）：拿实测值对照，不许再漂
+const readme = readFileSync(new URL('../README.md', import.meta.url), 'utf8')
+const negSrc = readFileSync(new URL('./neg-controls.mjs', import.meta.url), 'utf8')
+const saidNeg = Number((/npm run neg[^\n]*?（(\d+) 条）/.exec(readme) || [])[1])
+const realNeg = (negSrc.match(/\{ name: '/g) || []).length
+check('README 声明的负向控制数与实际一致', saidNeg === realNeg, `README=${saidNeg} 实际=${realNeg}`)
+
+// +1：本条自身也算一项守卫，此刻还没计入 pass/fail
+const saidSmoke = Number((/npm test\s+#\s*(\d+)\s*项守卫/.exec(readme) || [])[1])
+check('README 声明的守卫数与实测一致', saidSmoke === pass + fail + 1, `README=${saidSmoke} 实测=${pass + fail + 1}`)
 
 console.log(`\n==== ${pass} pass / ${fail} fail ====`)
 if (fail) { console.error('FAILED:\n' + failures.map((f) => ' - ' + f).join('\n')); process.exit(1) }

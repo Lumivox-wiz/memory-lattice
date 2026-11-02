@@ -23,7 +23,7 @@ jobs:
       - name: 供应链审计（生产依赖）
         run: npm audit --omit=dev
 
-      - name: 冒烟（237 项守卫）
+      - name: 冒烟（全量守卫）
         run: npm test
 
       - name: 负向控制（守卫必须能红）

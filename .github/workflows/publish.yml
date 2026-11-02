@@ -17,12 +17,26 @@ jobs:
   publish:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      # 固定到 commit SHA（供应链：tag 可被移动，SHA 不可）
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: '22'
         # 刻意不设 registry-url：设了会让 setup-node 注入占位 NODE_AUTH_TOKEN，
         # npm 见到该变量就走 token 认证，OIDC 交换不会发生（表现为 ENEEDAUTH）。
+
+      # tag 与 package.json 版本不一致时拒绝发布：否则 tag 会指向一个名不副实的版本
+      - name: 校验 tag 与 package.json 版本一致
+        if: startsWith(github.ref, 'refs/tags/')
+        run: |
+          v=$(npm pkg get version | tr -d '"')
+          t=${GITHUB_REF_NAME#v}
+          if [ "$v" != "$t" ]; then
+            echo "package.json 版本 $v 与 tag $GITHUB_REF_NAME 不一致，拒绝发布"
+            exit 1
+          fi
+
       - run: npm install -g npm@latest # Trusted Publishing 需要 npm >= 11.5.1
       - run: npm ci
       - run: npm test # 发布前跑满守卫，红了就不发

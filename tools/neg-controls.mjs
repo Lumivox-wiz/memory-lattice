@@ -34,6 +34,13 @@ const cases = [
   { name: '自动备份改成默认开启', file: 'index.js', from: '  backupAuto: z.boolean().default(false),', to: '  backupAuto: z.boolean().default(true),', expect: '自动备份默认关闭' },
   { name: '口令字段塞进配置 schema（落盘）', file: 'index.js', from: '  backupEncrypt: z.boolean().default(false),', to: "  backupEncrypt: z.boolean().default(false),\n  backupPassphrase: z.string().default(''),", expect: '配置 schema 里没有任何口令字段' },
   { name: '自动备份定时器不被清理（泄漏）', file: 'index.js', from: 'clearInterval(patrolTimer); clearInterval(backupTimer) }', to: 'clearInterval(patrolTimer) }', expect: '自动备份定时器 unref' },
+  // 交付纪律（发布链路 / 文档数量不漂移）
+  { name: '工作流 action 退回可移动的 tag', file: '.github/workflows/publish.yml', from: "      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0", to: "      - uses: actions/checkout@v4", expect: '工作流里的 action 都固定到 commit SHA' },
+  { name: '发布工作流设了 registry-url（OIDC 被顶掉）', file: '.github/workflows/publish.yml', from: "          node-version: '22'", to: "          node-version: '22'\n          registry-url: 'https://registry.npmjs.org'", expect: '发布工作流不设 registry-url' },
+  { name: '发布工作流丢了 id-token: write', file: '.github/workflows/publish.yml', from: '  id-token: write', to: '  id-token: read', expect: '发布工作流声明 id-token' },
+  { name: '发布工作流不再校验版本号（tag 可以名不副实）', file: '.github/workflows/publish.yml', from: 'npm pkg get version', to: 'npm pkg get name', expect: '发布工作流校验 tag 与版本号一致' },
+  { name: 'README 守卫数写回旧值', file: 'README.md', from: '# 264 项守卫', to: '# 237 项守卫', expect: 'README 声明的守卫数与实测一致' },
+  { name: 'README 负向控制数写回旧值', file: 'README.md', from: '（30 条）', to: '（18 条）', expect: 'README 声明的负向控制数与实际一致' },
 ]
 
 let bad = 0

@@ -2,13 +2,26 @@
 
 按 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/) 组织，版本号遵循语义化版本。
 
+## [0.2.4] - 2026-11-03
+
+发布链路与文档的自我约束（无功能改动）。
+
+### Changed
+
+- `publish.yml` 的 Actions 固定到 commit SHA（与 `ci.yml` 一致）；新增「tag 与 `package.json` 版本不一致就拒绝发布」，避免标签指向名不副实的版本。
+- `ci.yml` 里写死的守卫数量改为不带数字（数字会漂移），数量改由冒烟自身与 README 对照。
+
+### Fixed
+
+- README 的守卫数（237 → 264）与负向控制数（18 → 30）已与实际一致，并新增守卫防止再次漂移。
+
 ## [0.2.3] - 2026-11-03
 
 发布方式改为 npm Trusted Publishing（OIDC）。
 
 ### Changed
 
-- 新增 `.github/workflows/publish.yml`：push `v*` 标签或手动触发时，先跑满守卫（257 项）与负向控制，再通过 OIDC 发布。
+- 新增 `.github/workflows/publish.yml`：push `v*` 标签或手动触发时，先跑满守卫，再通过 OIDC 发布。
 - **发布不再需要凭据**：npm 账号已把本仓库注册为 trusted publisher，CI 里 `npm publish` 不用 `NPM_TOKEN`、不用 2FA 验证码，且每次发布自动附带 provenance（可验证这个包确实来自本仓库的某次构建）。
 - 本机不再保存 npm token（旧的发布 token 已作废/撤销）。
 
