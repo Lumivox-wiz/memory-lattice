@@ -2,7 +2,7 @@
 // 覆盖：艾宾浩斯数学 / 存储与审核状态机 / STM 生命周期 / 捕获链路 / 人格 / 宿主契约（假 ctx 全流程）
 // 跑法：node tools/smoke.mjs   —— 任何一条 FAIL 都 exit 1
 
-import { mkdtempSync, rmSync, readFileSync, existsSync } from 'node:fs'
+import { mkdtempSync, rmSync, readFileSync, existsSync, writeFileSync, readdirSync, utimesSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
 import { getDb, setConfig, closeAllDb } from '../lib/db.js'
@@ -1095,6 +1095,77 @@ console.log('\n[17] encrypted backup + incremental restore + per-kind count cap'
   check('权限清单不声明外部服务', Array.isArray(perm.externalServices) && perm.externalServices.length === 0, JSON.stringify(perm.externalServices))
   check('权限清单不声明没用到的子进程能力', Array.isArray(perm.commands) && perm.commands.length === 0, JSON.stringify(perm.commands))
   check('权限说明写清了边界', String(perm.notes || '').length > 80, String(perm.notes || '').slice(0, 40))
+}
+
+console.log('\n[18] 自动定时备份：目录越界回落 / 口令不落盘 / 缺失即跳过 / 只清自家文件')
+{
+  const root = mkdtempSync(path.join(tmpdir(), 'memory-lattice-auto-'))
+  store.writeMemory(root, { layer: 'ltm', kind: 'knowledge', title: '自动备份甲', body: '甲正文内容', status: 'active' })
+  store.writeMemory(root, { layer: 'ltm', kind: 'event', title: '自动备份乙', body: '乙正文内容', status: 'active' })
+
+  // ---------- ① 目录锁在库内 ----------
+  const inside = backup.resolveBackupDir(root, 'backups')
+  const escaped = backup.resolveBackupDir(root, '../evil-outside')
+  check('备份目录越界被回落到库内', escaped === inside && escaped.startsWith(path.resolve(root)), `${escaped} vs ${inside}`)
+  check('备份目录留空时用库内 backups', backup.resolveBackupDir(root, '') === path.join(path.resolve(root), 'backups'))
+  check('绝对路径逃出也被回落', backup.resolveBackupDir(root, tmpdir()) === inside, backup.resolveBackupDir(root, tmpdir()))
+
+  // ---------- ② 口令缺失：跳过，且一个字节都不写 ----------
+  const countFiles = (d) => { try { return readdirSync(d).length } catch { return 0 } }
+  delete process.env[backup.BACKUP_PASS_ENV]
+  const before = countFiles(inside)
+  const skipped = backup.runAutoBackup(root, { encrypt: true, keep: 5 })
+  const after = countFiles(inside)
+  check('加密但口令缺失 → 跳过（passphrase-missing）', skipped.ok === false && skipped.skipped === 'passphrase-missing', JSON.stringify(skipped))
+  check('加密但口令缺失 → 不写任何文件（不静默降级成明文）', after === before, `${before} → ${after}`)
+
+  // ---------- ③ 明文：首跑全量 → 推进水位 → 次跑增量 ----------
+  const r1 = backup.runAutoBackup(root, { keep: 5 })
+  check('明文自动备份成功落盘', r1.ok === true && existsSync(r1.file) && r1.bytes > 0, JSON.stringify({ ok: r1.ok, file: r1.file }))
+  check('首次无水位 → 走全量', r1.mode === 'full', r1.mode)
+  check('自动备份后水位推进', backup.readWatermark(root) === r1.stats.watermark)
+  check('lastAutoBackupAt 可回读（UI 显示用）', backup.readLastAutoBackupAt(root) === r1.stats.watermark)
+  const r2 = backup.runAutoBackup(root, { keep: 5 })
+  check('第二次自动备份走增量', r2.mode === 'incremental', r2.mode)
+
+  // ---------- ④ 加密：环境变量齐了就落信封 ----------
+  process.env[backup.BACKUP_PASS_ENV] = 'auto-backup-secret'
+  const r3 = backup.runAutoBackup(root, { encrypt: true, keep: 5 })
+  const r3raw = readFileSync(r3.file, 'utf8')
+  check('加密自动备份落盘为信封', r3.ok === true && backup.isEncryptedEnvelope(r3raw), String(r3.file))
+  check('加密备份文件里不含明文正文', !r3raw.includes('甲正文内容'))
+  delete process.env[backup.BACKUP_PASS_ENV]
+
+  // ---------- ⑤ 保留份数：只删自家前缀，其他文件一个都不碰 ----------
+  const keepDir = mkdtempSync(path.join(tmpdir(), 'memory-lattice-keep-'))
+  const names = ['memory-lattice-backup-1.json', 'memory-lattice-backup-2.json', 'memory-lattice-backup-3.json', 'memory-lattice-backup-4.json']
+  names.forEach((n, i) => {
+    writeFileSync(path.join(keepDir, n), '{}')
+    // mtime 必须显式拉开：同一毫秒内创建的文件排序不稳定，守卫会随机红
+    utimesSync(path.join(keepDir, n), new Date(1000 + i * 1000), new Date(1000 + i * 1000))
+  })
+  // 这三个「不属于备份」的文件**故意给更早的 mtime**：
+  // 一旦清理逻辑忘了按前缀过滤，它们就会因为最旧而被优先删掉 —— 这样守卫才真的能红，
+  // 而不是「碰巧没删到」的假绿。
+  for (const [n, t] of [['notes.txt', 500], ['other.json', 600], ['memory-lattice-backup-5.json.enc', 700]]) {
+    writeFileSync(path.join(keepDir, n), 'x')
+    utimesSync(path.join(keepDir, n), new Date(t), new Date(t))
+  }
+  const pr = backup.pruneBackups(keepDir, 2)
+  check('保留份数只删最旧的（留 keep 份）', pr.removed.length === 2 && pr.kept === 2, JSON.stringify(pr))
+  check('清理不动用户的其他文件', existsSync(path.join(keepDir, 'notes.txt')) && existsSync(path.join(keepDir, 'other.json')))
+  check('清理不动同前缀但非 .json 的文件', existsSync(path.join(keepDir, 'memory-lattice-backup-5.json.enc')))
+  check('留下的确实是最新的两份',
+    existsSync(path.join(keepDir, 'memory-lattice-backup-3.json')) && existsSync(path.join(keepDir, 'memory-lattice-backup-4.json'))
+    && !existsSync(path.join(keepDir, 'memory-lattice-backup-1.json')) && !existsSync(path.join(keepDir, 'memory-lattice-backup-2.json')))
+
+  // ---------- ⑥ 配置纪律（注释里的同名字样不算，先剥注释再扫）----------
+  const idx = readFileSync(new URL('../index.js', import.meta.url), 'utf8').replace(/\/\/[^\n]*/g, '').replace(/\/\*[\s\S]*?\*\//g, '')
+  check('自动备份默认关闭（副作用闸门一律默认关）', /backupAuto:\s*z\.boolean\(\)\.default\(false\)/.test(idx))
+  const schemaBlock = idx.slice(idx.indexOf('vaultDir:'), idx.indexOf('function markAllVolatile'))
+  check('配置 schema 里没有任何口令字段', !/passphrase/i.test(schemaBlock), (schemaBlock.match(/passphrase/i) || [''])[0])
+  check('自动备份定时器 unref 且会被清理', /backupTimer\.unref\(\)/.test(idx) && /clearInterval\(backupTimer\)/.test(idx))
+  check('口令来源常量指向环境变量', backup.BACKUP_PASS_ENV === 'MEMORY_LATTICE_BACKUP_PASSPHRASE')
 }
 
 closeAllDb()

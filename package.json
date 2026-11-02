@@ -1,6 +1,6 @@
 {
   "name": "memory-lattice",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "description": "忆枢（Memory Lattice）：带艾宾浩斯遗忘曲线的 DeepSeek Harness 记忆插件。短期记忆会过期、长期记忆按 SM-2 复习、久不用会沉睡可复活、新记忆进审核中心、人格画像从记忆里长出来；含本地向量语义召回、加密/增量备份、遗忘曲线与记忆星云。",
   "license": "MIT",
   "type": "module",

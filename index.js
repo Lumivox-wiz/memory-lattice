@@ -35,6 +35,7 @@ import { applyRetention, applyCountPolicy, enforceCapacity } from './lib/retenti
 import { expandQuery, mergeHits } from './lib/semantic.js'
 import { createApi, API_PREFIX } from './lib/api.js'
 import { warmIndex } from './lib/vectors.js'
+import { runAutoBackup, readLastAutoBackupAt, BACKUP_PASS_ENV } from './lib/backup.js'
 
 // webServer 实例 → { handler }。热重载会重新跑 apply，但 webServer 上的 prefix 路由
 // 不会随 fiber 卸载（同一对象、同一条路径再注册就报 duplicate）。所以路由只装一次，
@@ -105,6 +106,15 @@ export const Config = z.object({
   semanticRecall: z.boolean().default(false),
   // 本地向量语义召回：分布论 + 随机投影，纯本地计算零出站，可与上面的模型扩写并用
   vectorRecall: z.boolean().default(true),
+  // 自动定时备份（README「已知未做」第 2 条）：默认关。开启后按间隔把增量备份写进库内目录。
+  // 注意这里**没有** passphrase 字段 —— 加密口令只从环境变量 MEMORY_LATTICE_BACKUP_PASSPHRASE 读，
+  // 落进配置等于把密钥和密文放在同一个库里，那还不如不加密。
+  backupAuto: z.boolean().default(false),
+  backupIntervalHours: z.number().min(1).max(720).default(24),
+  // 相对 vaultDir 的子目录，空 = backups；越界（../ 或绝对路径）会被回落到 backups
+  backupDir: z.string().default(''),
+  backupKeep: z.number().min(1).max(120).default(7),
+  backupEncrypt: z.boolean().default(false),
 })
 
 function markAllVolatile(schema) {
@@ -685,7 +695,36 @@ export function apply(ctx, config) {
     }, 30 * 60_000)
     if (typeof personaTimer.unref === 'function') personaTimer.unref()
 
-    return () => { clearInterval(sweepTimer); clearInterval(personaTimer); clearInterval(patrolTimer) }
+    // 自动备份：默认关。开启后按 backupIntervalHours 跑增量备份，输出目录锁在 vaultDir 内。
+    // 检查频率 10 分钟一次（与夜巡同频），真跑不跑由间隔闸门决定 —— 避免把 24h 的活
+    // 交给一个 24h 的 timer（精度漂移 + 启动时立即触发一次全量）。
+    // 加密但环境变量没设 → 跳过本次并留 warn，**绝不静默降级成明文**。
+    let lastAutoBackupAt = 0
+    const backupTimer = setInterval(() => {
+      try {
+        const cfg = cfgNow()
+        if (cfg.enabled === false || cfg.backupAuto !== true) return
+        const everyMs = (Math.max(Number(cfg.backupIntervalHours) || 24, 1)) * 3600_000
+        if (Date.now() - lastAutoBackupAt < everyMs) return
+        lastAutoBackupAt = Date.now()
+        const r = runAutoBackup(vaultDir(), {
+          dir: cfg.backupDir || '',
+          encrypt: cfg.backupEncrypt === true,
+          keep: Number(cfg.backupKeep) || 7,
+        })
+        if (!r.ok) {
+          const why = r.skipped === 'passphrase-missing'
+            ? `已开启加密，但环境变量 ${BACKUP_PASS_ENV} 未设置`
+            : (r.skipped || '未知原因')
+          log('system', 'warn', `自动备份跳过：${why}（本次不写文件，也不会退化成明文）`)
+          return
+        }
+        log('system', 'backup', `自动备份 ${r.mode} · ${r.stats.memories} 条 · ${Math.round(r.bytes / 1024)}KB · 保留 ${r.kept} 份${r.removed?.length ? ` · 清理旧备份 ${r.removed.length} 份` : ''}`)
+      } catch (e) { log('system', 'fail', '自动备份失败：' + String(e?.message || e)) }
+    }, 10 * 60_000)
+    if (typeof backupTimer.unref === 'function') backupTimer.unref()
+
+    return () => { clearInterval(sweepTimer); clearInterval(personaTimer); clearInterval(patrolTimer); clearInterval(backupTimer) }
   }, 'memory-lattice: timers')
 
   // ---- 5. API 路由 ----

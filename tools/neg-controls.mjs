@@ -27,6 +27,13 @@ const cases = [
   // 第三轮发布前复核（发布清单收窄 / gitignore 隐私模式）
   { name: '发布清单把 src 与整套 tools 放回去', file: 'package.json', from: '"tools/import-export.mjs",', to: '"src",\n    "tools",\n    "tools/import-export.mjs",', expect: '发布清单只含运行件' },
   { name: '.gitignore 丢掉数据库与密钥模式', file: '.gitignore', from: '.env*\n*.pem\n*.key\n*.db\n*.sqlite\n*.wal\n*.shm\n', to: '.env*\n*.pem\n', expect: '.gitignore 盖住隐私文件模式' },
+  // 自动定时备份（默认关 / 口令不落盘 / 目录锁库内 / 只清自家文件）
+  { name: '备份目录越界不回落（可写穿到库外）', file: 'lib/backup.js', from: '  if (inside.startsWith(\'..\') || path.isAbsolute(inside)) return path.join(base, \'backups\')', to: '  if (false) return path.join(base, \'backups\')', expect: '备份目录越界' },
+  { name: '口令缺失时静默降级成明文', file: 'lib/backup.js', from: '      return { ok: false, skipped: \'passphrase-missing\', dir: outDir }', to: '      encrypt = false // mutated: 静默降级成明文', expect: 'passphrase-missing' },
+  { name: '清理不按前缀过滤（会删掉用户自己的文件）', file: 'lib/backup.js', from: "  const mine = entries.filter((f) => f.startsWith(BACKUP_PREFIX) && f.endsWith('.json'))", to: '  const mine = entries // mutated: 不区分前缀，全当备份删', expect: '清理不动用户的其他文件' },
+  { name: '自动备份改成默认开启', file: 'index.js', from: '  backupAuto: z.boolean().default(false),', to: '  backupAuto: z.boolean().default(true),', expect: '自动备份默认关闭' },
+  { name: '口令字段塞进配置 schema（落盘）', file: 'index.js', from: '  backupEncrypt: z.boolean().default(false),', to: "  backupEncrypt: z.boolean().default(false),\n  backupPassphrase: z.string().default(''),", expect: '配置 schema 里没有任何口令字段' },
+  { name: '自动备份定时器不被清理（泄漏）', file: 'index.js', from: 'clearInterval(patrolTimer); clearInterval(backupTimer) }', to: 'clearInterval(patrolTimer) }', expect: '自动备份定时器 unref' },
 ]
 
 let bad = 0

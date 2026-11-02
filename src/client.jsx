@@ -984,9 +984,25 @@ function BackupPanel() {
   const [info, setInfo] = useState(null)
   const [err, setErr] = useState('')
   const [watermark, setWatermark] = useState('')
+  const [auto, setAuto] = useState(null)
+  const [autoBusy, setAutoBusy] = useState(false)
+  const [autoRes, setAutoRes] = useState(null)
   useEffect(() => {
-    api('/backup').then((d) => { if (d.ok && d.watermark) setWatermark(d.watermark) })
+    api('/backup').then((d) => {
+      if (!d.ok) return
+      if (d.watermark) setWatermark(d.watermark)
+      if (d.auto) setAuto(d.auto)
+    })
   }, [])
+  // 自动备份的开关/间隔/保留份数是**插件配置**，在设置页里改（settings schema 已声明），
+  // 这里不重复一套表单 —— 只负责显示状态 + 手动触发一次，用来验证目录和口令配对了没有。
+  const runAuto = async () => {
+    setAutoBusy(true); setAutoRes(null)
+    const r = await api('/backup', { method: 'POST', body: { autoRun: true } })
+    setAutoBusy(false)
+    setAutoRes(r)
+    if (r.ok) api('/backup').then((d) => { if (d.ok && d.watermark) setWatermark(d.watermark) })
+  }
   const run = async () => {
     if (pass && pass.length < 8) { setErr('口令至少 8 个字符'); return }
     setBusy(true); setErr(''); setInfo(null)
@@ -1031,8 +1047,41 @@ function BackupPanel() {
         </div>
       )}
       {err && <small>{err}</small>}
+
+      <div className="ml-field" style={{ marginTop: 10 }}>
+        <span>自动定时备份</span>
+        {auto && (
+          <div className="ml-dim">
+            {auto.enabled
+              ? `已开启 · 每 ${auto.intervalHours} 小时 · 保留 ${auto.keep} 份 · ${auto.encrypt ? '加密' : '明文'}`
+              : '已关闭 —— 开关、间隔、保留份数在「插件设置」里改'}
+            {auto.lastAt ? ` · 上次 ${auto.lastAt.replace('T', ' ').slice(0, 19)}` : ''}
+            <div>目录：{auto.dir}</div>
+          </div>
+        )}
+        <div className="ml-import-row">
+          <button disabled={autoBusy} onClick={runAuto}>{autoBusy ? '执行中…' : '立即备份一次'}</button>
+        </div>
+        {autoRes && autoRes.ok && (
+          <small>
+            已写入 {autoRes.file}（{Math.max(1, Math.round(autoRes.bytes / 1024))}KB · 保留 {autoRes.kept} 份
+            {autoRes.removed?.length ? ` · 清理旧备份 ${autoRes.removed.length} 份` : ''}）
+          </small>
+        )}
+        {autoRes && !autoRes.ok && autoRes.skipped === 'passphrase-missing' && (
+          <small>
+            已开启加密，但环境变量 <code>MEMORY_LATTICE_BACKUP_PASSPHRASE</code> 未设置 ——
+            本次没有写任何文件，也不会退化成明文。设好环境变量后需重启 DSH 才会生效。
+          </small>
+        )}
+        <small>
+          备份写在库内目录（越界配置会被回落到 <code>backups/</code>）；开启加密时口令只从上述环境变量读取，
+          不落配置、不进日志。
+        </small>
+      </div>
+
       <small>
-        加密用 scrypt 派生 + AES-256-GCM 认证加密；口令不落盘、不进日志，**忘了就无法恢复**。
+        加密用 scrypt 派生 + AES-256-GCM 认证加密；口令不落盘、不进日志（忘了就无法恢复）。
         增量备份会带「对端已删除」清单，恢复时同步删除，不会越恢复越多。
       </small>
     </div>
