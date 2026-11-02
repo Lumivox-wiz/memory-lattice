@@ -20,6 +20,9 @@ const cases = [
   { name: '增量不同步删除', file: 'lib/importer.js', from: '  for (const d of parsed.deletions) {', to: '  for (const d of []) {', expect: '对端删除被同步' },
   { name: '条数淘汰顺序反过来（先删常用的）', file: 'lib/retention.js', from: 'ORDER BY hits ASC, strength ASC, updated_at ASC', to: 'ORDER BY hits DESC, strength ASC, updated_at ASC', expect: '优先淘汰 0 命中的最弱项' },
   { name: '增量比较退回裸字符串（时间格式不归一）', file: 'lib/backup.js', from: 'WHERE (datetime(updated_at) >= datetime(?)) OR (deleted_at IS NOT NULL AND datetime(deleted_at) >= datetime(?))', to: 'WHERE (updated_at >= ?) OR (deleted_at IS NOT NULL AND deleted_at >= ?)', expect: 'ISO 时间戳行' },
+  // 交付件（开源元数据）
+  { name: 'LICENSE 留着模板占位符', file: 'LICENSE', from: 'Copyright (c) 2026 澪梦 (Lumivox-wiz)', to: 'Copyright (c) <year> <copyright holders>', expect: 'LICENSE 没有占位符' },
+  { name: 'lockfile 缺 resolved（npm ci 不可复现）', file: 'package-lock.json', from: '"resolved": "https://registry.npmjs.org/@deepseek-ai/cordis/-/cordis-4.0.5.tgz",\n      "integrity": "sha512-Sktq5axy0owk9PdnivBRNOJjHEVEibCt0+TDDZcv0+UH2KS1M910fX4kn5y45YFsrpZIi1mJf/1s5VzywMUnyg==",', to: '"integrity": "sha512-Sktq5axy0owk9PdnivBRNOJjHEVEibCt0+TDDZcv0+UH2KS1M910fX4kn5y45YFsrpZIi1mJf/1s5VzywMUnyg==",', expect: 'lockfile 每条都有 resolved' },
 ]
 
 let bad = 0

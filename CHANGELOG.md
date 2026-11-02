@@ -31,6 +31,14 @@
 
 - 增量备份的时间水位与库内 `datetime('now')` 格式不一致导致「看起来没有变化」；现在统一经 SQLite `datetime()` 归一，并正确处理本地时区解析陷阱。
 - 云图双层容器导致弹窗画布被内层固定高度卡死。
+- `package-lock.json` 里 27 个 `@deepseek-ai/*` 条目没有 `resolved`，`npm ci` 在干净机器上无法复现；已从公共 npm 重新生成（每条带 `resolved` + `integrity`）。
+
+### 交付
+
+- 加入 `LICENSE`（MIT）、`.gitignore`、`.gitattributes`（全仓 LF，`.ps1` 走 CRLF）、`SECURITY.md`、`.github/workflows/ci.yml`。
+- CI：`npm ci` → 冒烟（232 项）→ 负向控制（14 条，改坏必须变红）→ `lib/client.js` 与源码一致。
+- 冒烟新增「开源交付件元数据」守卫：LICENSE 无占位符、作者与 `package.json` 一致、仓库地址齐全、README 无 `your-name` 占位、发布清单排除预览产物、lockfile 每条可解析。
+- `npm pack` 体积 698KB → 163KB（预览 bundle 与截图不再进包）。
 
 ## [0.1.0] - 2026-11-01
 

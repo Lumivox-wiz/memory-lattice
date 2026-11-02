@@ -96,9 +96,7 @@
       ]
     }
   },
-  "author": {
-    "name": "澪梦"
-  },
+  "author": "澪梦 (Lumivox-wiz)",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/Lumivox-wiz/memory-lattice.git"
@@ -109,5 +107,8 @@
   },
   "publishConfig": {
     "access": "public"
-  }
+  },
+  "contributors": [
+    "Lumivox-wiz <https://github.com/Lumivox-wiz>"
+  ]
 }

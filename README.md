@@ -153,7 +153,7 @@ BM25 是字面匹配，「换个说法就召回不到」是结构性死角。两
 ```bash
 npm ci                 # 安装（含 peer：dsh-tools / dsh-llm / cordis）
 npm run build          # esbuild 打包客户端 → lib/client.js（自检语法）
-npm test               # 225 项守卫
+npm test               # 232 项守卫（含开源交付件元数据检查）
 npm run neg            # 负向控制：逐条改坏守卫，确认对应测试真的会红（11 条）
 npm run preview        # 用假数据渲染 UI 并截图到 tools/preview-*.png（改观感时用）
 ```
@@ -214,13 +214,13 @@ node tools/migrate-eternal.mjs               # 已审核卡 → LTM，按卡龄�
 git push -u origin main
 ```
 
-- CI（`.github/workflows/ci.yml`）在 push / PR 上跑：`npm ci` → 冒烟（225 项）→ 负向控制（守卫必须能红）→ 「`lib/client.js` 与源码一致」。
+- CI（`.github/workflows/ci.yml`）在 push / PR 上跑：`npm ci` → 冒烟（232 项）→ 负向控制（守卫必须能红）→ 「`lib/client.js` 与源码一致」。
 - CI 用的是公共 npm 上的 `@deepseek-ai/*`（`0.1.0-rc.8` / `cordis 4.0.5`），`package-lock.json` 已重新生成，每条都有 `resolved` + `integrity`，`npm ci` 可复现。
 - 徽章与 `package.json` 里的仓库地址若改名，一起改（README 顶部徽章 + `repository/homepage/bugs`）。
 - 发 npm：`npm publish`（`publishConfig.access` 已是 public，`files` 只含运行所需文件，预览产物与截图已排除）。
 
 ## License
 
-[MIT](./LICENSE) © 2026 澪梦
+[MIT](./LICENSE) © 2026 澪梦 (Lumivox-wiz)
 
 

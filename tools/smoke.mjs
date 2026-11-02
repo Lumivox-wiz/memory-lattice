@@ -1065,6 +1065,24 @@ console.log('\n[17] encrypted backup + incremental restore + per-kind count cap'
   check('保留元数据带条数上限', metaB.body.kinds.find((k) => k.kind === 'knowledge')?.max === 10, JSON.stringify(metaB.body.kinds.map((k) => `${k.kind}:${k.max}`)))
 }
 
+// ---------- 交付件（开源仓库元数据）----------
+{
+  const read = (p) => readFileSync(new URL('../' + p, import.meta.url), 'utf8')
+  const lic = read('LICENSE')
+  check('LICENSE 是 MIT', lic.startsWith('MIT License'))
+  // 占位符检查：模板里常见的 "<year> <copyright holders>" / "Your Name" 千万别留着就发
+  check('LICENSE 没有占位符', !/<year>|copyright holders|Your Name|\[name\]/.test(lic), lic.split('\n')[2])
+  const pkg = JSON.parse(read('package.json'))
+  const holder = /Copyright \(c\) (\S+) (.+)/.exec(lic)
+  check('LICENSE 与 package.json 的作者一致', !!holder && pkg.author.includes(holder[2].trim()), `${holder && holder[2]} vs ${pkg.author}`)
+  check('package.json 有仓库地址', !!pkg.repository?.url && !!pkg.homepage && !!pkg.bugs?.url)
+  check('README 徽章没有 your-name 占位', !read('README.md').includes('your-name'))
+  check('package.json 发布清单不含预览产物', (pkg.files || []).some((f) => f.startsWith('!tools/')), JSON.stringify(pkg.files))
+  const lock = JSON.parse(read('package-lock.json'))
+  const noResolved = Object.entries(lock.packages || {}).filter(([k, v]) => k && !v.resolved && !v.link).map(([k]) => k)
+  check('lockfile 每条都有 resolved（npm ci 可复现）', noResolved.length === 0, noResolved.slice(0, 5).join(','))
+}
+
 closeAllDb()
 try { rmSync(ROOT, { recursive: true, force: true }) } catch { /* Windows 句柄延迟，无妨 */ }
 
