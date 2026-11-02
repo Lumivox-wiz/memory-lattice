@@ -154,9 +154,12 @@ BM25 是字面匹配，「换个说法就召回不到」是结构性死角。两
 npm ci                 # 安装（含 peer：dsh-tools / dsh-llm / cordis）
 npm run build          # esbuild 打包客户端 → lib/client.js（自检语法）
 npm test               # 232 项守卫（含开源交付件元数据检查）
-npm run neg            # 负向控制：逐条改坏守卫，确认对应测试真的会红（11 条）
+npm run neg            # 负向控制：逐条改坏守卫，确认对应测试真的会红（14 条）
 npm run preview        # 用假数据渲染 UI 并截图到 tools/preview-*.png（改观感时用）
 ```
+
+- CI（`.github/workflows/ci.yml`）：`npm ci` → 冒烟 → 负向控制 → 校验「`lib/client.js` 与源码一致」。
+- 发 npm：`npm publish`（`publishConfig.access` 已是 public，`files` 只含运行所需文件，预览产物与截图已排除）。
 
 ```powershell
 pwsh -File deploy.ps1              # 拷贝进 profile + 注册 bundle（DSH_HOME 或 ~/.dsh）
@@ -195,22 +198,6 @@ docs/screenshots/       README 用的截图
 1. 真正的向量语义仍然依赖「同一语料里共同出现」——换个完全没交集的说法还是会漏（想要彻底解决得上 embedding 模型，属于出站）。
 2. 备份没有自动定时任务：需要手动点，或自己用 `tools/import-export.mjs` 挂到系统计划任务。
 3. 多设备同步（当前是「导出 → 导入」的人工流程）。
-
-## 发布到 GitHub
-
-本仓库已 `git init` 并完成首次提交（分支 `main`，远端已指向 `Lumivox-wiz/memory-lattice`）。上传只需两步：
-
-1. 在 GitHub 上**建一个空仓库**（仓库名 `memory-lattice`，不要勾选 README / .gitignore / License —— 本地已有）。
-2. 推送：
-
-```bash
-git push -u origin main
-```
-
-- CI（`.github/workflows/ci.yml`）在 push / PR 上跑：`npm ci` → 冒烟（232 项）→ 负向控制（守卫必须能红）→ 「`lib/client.js` 与源码一致」。
-- CI 用的是公共 npm 上的 `@deepseek-ai/*`（`0.1.0-rc.8` / `cordis 4.0.5`），`package-lock.json` 已重新生成，每条都有 `resolved` + `integrity`，`npm ci` 可复现。
-- 徽章与 `package.json` 里的仓库地址若改名，一起改（README 顶部徽章 + `repository/homepage/bugs`）。
-- 发 npm：`npm publish`（`publishConfig.access` 已是 public，`files` 只含运行所需文件，预览产物与截图已排除）。
 
 ## License
 
