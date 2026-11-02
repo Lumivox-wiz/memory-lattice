@@ -186,15 +186,8 @@ lib/importer.js         导入规范化、四模式、按 id upsert、删除对�
 lib/api.js              本机 JSON API（会话令牌、同源闸门、限流、体上限）
 src/client.jsx          UI：概览 / 记忆 / 审核 / 人格 / 云图 / 配置
 src/graph3d.jsx         记忆星云（canvas 3D 透视、分簇、聚焦）
-tools/                  构建、冒烟、负向控制、预览截图、导入导出 CLI、旧库迁移
+tools/                  构建、冒烟、负向控制、预览截图、导入导出 CLI
 docs/screenshots/       README 用的截图
-```
-
-## 从 memory-eternal 迁移
-
-```powershell
-node tools/migrate-eternal.mjs --dry-run     # 先看会迁哪些
-node tools/migrate-eternal.mjs               # 已审核卡 → LTM，按卡龄折算强度/间隔（幂等）
 ```
 
 ## 已知未做

@@ -58,5 +58,4 @@ if (-not $SkipProfile) {
 }
 
 Write-Host "已部署 → $dst"
-Write-Host "下一步：①完全退出 DSH Desktop（含托盘）再启动 —— bundle 按 URL 缓存在内存里"
-Write-Host "        ②旧的 memory-eternal 记忆：node tools/migrate-eternal.mjs --dry-run 先看一眼"
+Write-Host "下一步：完全退出 DSH Desktop（含托盘）再启动 —— bundle 按 URL 缓存在内存里"
