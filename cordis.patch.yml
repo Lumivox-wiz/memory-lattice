@@ -1,0 +1,9 @@
+# 忆枢（memory-lattice）bundle 补丁层。
+# 安装后由 package.json 的 dsh.bundle.patch 自动生效；后层
+# （profile 自己的 cordis.patch.yml / --patch）可按 id 覆盖或禁用本行。
+
+- insert:
+    - id: memory-lattice
+      name: memory-lattice
+      config:
+        enabled: true

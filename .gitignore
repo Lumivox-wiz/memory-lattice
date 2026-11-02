@@ -1,0 +1,20 @@
+# 依赖与构建
+node_modules/
+*.log
+
+# 负向控制的临时备份（tools/neg-controls.mjs 会就地改名再还原）
+*.neg
+*.check
+*.bak
+
+# 预览工具的中间产物（截图要留，bundle 与生成的 html 不留）
+tools/preview-bundle.js
+tools/preview-graph.html
+
+# 临时目录与个人配置
+.tmp/
+.tmpcli/
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db

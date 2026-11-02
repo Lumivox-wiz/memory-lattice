@@ -1,0 +1,107 @@
+{
+  "name": "memory-lattice",
+  "version": "0.2.0",
+  "description": "忆枢（Memory Lattice）：带艾宾浩斯遗忘曲线的 DeepSeek Harness 记忆插件。短期记忆会过期、长期记忆按 SM-2 复习、久不用会沉睡可复活、新记忆进审核中心、人格画像从记忆里长出来；含本地向量语义召回、加密/增量备份、遗忘曲线与记忆星云。",
+  "license": "MIT",
+  "type": "module",
+  "main": "index.js",
+  "exports": {
+    ".": "./index.js",
+    "./client": "./lib/client.js",
+    "./cordis.patch.yml": "./cordis.patch.yml",
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "index.js",
+    "lib",
+    "src",
+    "tools",
+    "cordis.patch.yml",
+    "README.md",
+    "LICENSE",
+    "CHANGELOG.md"
+  ],
+  "engines": {
+    "node": ">=22",
+    "dsh": ">=0.1.5-alpha.2 <0.3.0-0"
+  },
+  "keywords": [
+    "deepseek-harness",
+    "dsh",
+    "dsh-plugin",
+    "memory",
+    "ebbinghaus",
+    "spaced-repetition",
+    "forgetting-curve",
+    "persona"
+  ],
+  "scripts": {
+    "build": "node tools/build.mjs",
+    "test": "node tools/smoke.mjs",
+    "neg": "node tools/neg-controls.mjs",
+    "preview": "node tools/preview-graph.mjs"
+  },
+  "dependencies": {
+    "@deepseek-ai/schemastery": "^3.18.1"
+  },
+  "peerDependencies": {
+    "@deepseek-ai/cordis": "^4.0.1",
+    "@deepseek-ai/dsh-llm": ">=0.1.0-rc.2 <0.3.0-0",
+    "@deepseek-ai/dsh-tools": ">=0.1.0-rc.2 <0.3.0-0"
+  },
+  "devDependencies": {
+    "@types/react": "^18.3.1",
+    "esbuild": "^0.24.0",
+    "react": "18.3.1",
+    "react-dom": "18.3.1"
+  },
+  "dsh": {
+    "client": {
+      "platform": "web",
+      "inject": [
+        "@deepseek-ai/dsh-client-ui-settings",
+        "@deepseek-ai/dsh-client-locale"
+      ]
+    },
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    },
+    "marketplace": {
+      "profiles": [
+        "web",
+        "desktop"
+      ],
+      "requiresBuildApproval": false,
+      "requiresRestart": true,
+      "manualSteps": false
+    },
+    "permissions": {
+      "level": "medium",
+      "files": "read-write",
+      "network": "limited",
+      "commands": "node",
+      "credentials": [],
+      "externalServices": [],
+      "notes": "Files: reads/writes only inside the vault under $DSH_HOME/memory-lattice (config vaultDir outside $DSH_HOME is rejected; use MEMORY_LATTICE_DIR env to relocate). Local UI API: every route except POST /session requires a per-process session token (cookie or X-ML-Token); without it the request gets 401. Network: no direct outbound; only when distillation or persona synthesis is explicitly enabled AND a provider is chosen does the plugin send text (up to 12,000 chars/turn for distillation) through the host LLM service (both default OFF). No telemetry, no third-party endpoints, no credentials."
+    },
+    "compatibility": {
+      "dsh": ">=0.1.5-alpha.2 <0.3.0-0",
+      "node": ">=22",
+      "profiles": [
+        "web",
+        "desktop"
+      ]
+    }
+  },
+  "author": {
+    "name": "澪梦"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Lumivox-wiz/memory-lattice.git"
+  },
+  "homepage": "https://github.com/Lumivox-wiz/memory-lattice#readme",
+  "bugs": {
+    "url": "https://github.com/Lumivox-wiz/memory-lattice/issues"
+  }
+}

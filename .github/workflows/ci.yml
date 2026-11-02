@@ -1,0 +1,31 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+
+      - name: 安装依赖（含 peer：dsh-tools / dsh-llm / cordis）
+        run: npm ci
+
+      - name: 冒烟（225 项守卫）
+        run: npm test
+
+      - name: 负向控制（守卫必须能红）
+        run: node tools/neg-controls.mjs
+
+      - name: 打包产物与源码一致
+        run: |
+          npm run build
+          git diff --exit-code lib/client.js

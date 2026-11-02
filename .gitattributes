@@ -1,0 +1,10 @@
+# 统一换行：仓库内一律 LF，Windows 检出也保持 LF（SQLite/正则/字面匹配都按 \n 写）
+* text=auto eol=lf
+
+*.png binary
+*.jpg binary
+*.otf binary
+*.woff2 binary
+*.db binary
+
+*.ps1 text eol=crlf
