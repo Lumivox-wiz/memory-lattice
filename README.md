@@ -24,18 +24,39 @@
 
 ## 安装
 
-**从 profile 手动注册**（当前可用）：
+插件已发布到 npm，每个 Release 也挂了**预构建 tarball** —— 正常安装不需要本地编译。
 
-```bash
-git clone https://github.com/Lumivox-wiz/memory-lattice.git
-cd memory-lattice
-npm ci && npm run build
+**① 命令行（推荐）**
+
+```sh
+dsh plugin --profile desktop add memory-lattice
 ```
+
+装指定版本、或不想经 npm，直接用 Release 里的预构建包（不用执行构建脚本）：
+
+```sh
+dsh plugin --profile desktop add https://github.com/Lumivox-wiz/memory-lattice/releases/download/v0.2.6/memory-lattice-0.2.6.tgz
+```
+
+从源码装也可以（包管理器会询问是否执行构建脚本，选允许）：
+
+```sh
+dsh plugin --profile desktop add github:Lumivox-wiz/memory-lattice
+```
+
+> DSH Desktop 的 profile 由客户端自己管理：命令行装完若在界面里看不到，改在客户端内
+> **设置 → 插件** 里添加同一个包名或地址。profile 名不是 `desktop` 的按实际替换。
+
+**② 手动部署（Windows 脚本）**
 
 ```powershell
-# Windows：拷贝进 profile 并注册 bundle（DSH_HOME 未设时用 ~/.dsh）
-pwsh -File deploy.ps1
+git clone https://github.com/Lumivox-wiz/memory-lattice.git
+cd memory-lattice
+pwsh -File deploy.ps1          # 拷贝进 profile + 注册 bundle（DSH_HOME 或 ~/.dsh）
 ```
+
+不需要 `npm ci`：`lib/client.js` 已随仓库提交，运行时零第三方依赖（`node:sqlite` + 自研检索）。
+`npm ci` 只在你要跑测试或改代码时才需要。
 
 然后**完全退出 DSH Desktop（含托盘）再启动**——客户端 bundle 按 URL 缓存在内存里，热重载换不掉。启动后：设置 → 「忆枢记忆」、侧栏底部 🧠 入口。
 
@@ -162,8 +183,8 @@ BM25 是字面匹配，「换个说法就召回不到」是结构性死角。两
 ```bash
 npm ci                 # 安装（含 peer：dsh-tools / dsh-llm / cordis）
 npm run build          # esbuild 打包客户端 → lib/client.js（自检语法）
-npm test               # 266 项守卫（含开源交付件元数据检查）
-npm run neg            # 负向控制：逐条改坏守卫，确认对应测试真的会红（32 条）
+npm test               # 267 项守卫（含开源交付件元数据检查）
+npm run neg            # 负向控制：逐条改坏守卫，确认对应测试真的会红（33 条）
 npm run preview        # 用假数据渲染 UI 并截图到 tools/preview-*.png（改观感时用；不入库，文档截图在 docs/screenshots/）
 ```
 

@@ -43,8 +43,9 @@ const cases = [
   { name: '发布工作流不再校验版本号（tag 可以名不副实）', file: '.github/workflows/publish.yml', from: 'npm pkg get version', to: 'npm pkg get name', expect: '发布工作流校验 tag 与版本号一致' },
   { name: '语义通道静默失效（融合守卫会空转成永远绿）', file: 'lib/vectors.js', from: '  const idx = index || getIndex(root)', to: '  const idx = null', expect: '对比时语义通道确实可用' },
   { name: '只打 tag 不建 Release（市场条目 tarball 会 404）', file: '.github/workflows/publish.yml', from: '          gh release create "$GITHUB_REF_NAME"', to: '          true # mutated: 不建 Release', expect: '发布后建 GitHub Release 并挂 tarball' },
-  { name: 'README 守卫数写回旧值', file: 'README.md', from: '# 266 项守卫', to: '# 237 项守卫', expect: 'README 声明的守卫数与实测一致' },
-  { name: 'README 负向控制数写回旧值', file: 'README.md', from: '（32 条）', to: '（18 条）', expect: 'README 声明的负向控制数与实际一致' },
+  { name: 'README 安装说明的 tarball 停在旧版本', file: 'README.md', from: 'releases/download/v0.2.6/memory-lattice-0.2.6.tgz', to: 'releases/download/v0.2.2/memory-lattice-0.2.2.tgz', expect: 'README 安装说明的 tarball 版本与 package.json 一致' },
+  { name: 'README 守卫数写回旧值', file: 'README.md', from: '# 267 项守卫', to: '# 237 项守卫', expect: 'README 声明的守卫数与实测一致' },
+  { name: 'README 负向控制数写回旧值', file: 'README.md', from: '（33 条）', to: '（18 条）', expect: 'README 声明的负向控制数与实际一致' },
 ]
 
 let bad = 0

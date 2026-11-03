@@ -1210,6 +1210,11 @@ const saidNeg = Number((/npm run neg[^\n]*?（(\d+) 条）/.exec(readme) || [])[
 const realNeg = (negSrc.match(/\{ name: '/g) || []).length
 check('README 声明的负向控制数与实际一致', saidNeg === realNeg, `README=${saidNeg} 实际=${realNeg}`)
 
+// 安装说明里写了 Release tarball 的**具体版本**，忘了跟着 package.json 升就会指到旧资产
+const tarballVer = (/releases\/download\/v([\d.]+)\//.exec(readme) || [])[1]
+const pkgVer = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8')).version
+check('README 安装说明的 tarball 版本与 package.json 一致', tarballVer === pkgVer, `README=${tarballVer} package=${pkgVer}`)
+
 // +1：本条自身也算一项守卫，此刻还没计入 pass/fail
 const saidSmoke = Number((/npm test\s+#\s*(\d+)\s*项守卫/.exec(readme) || [])[1])
 check('README 声明的守卫数与实测一致', saidSmoke === pass + fail + 1, `README=${saidSmoke} 实测=${pass + fail + 1}`)
