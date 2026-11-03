@@ -47,6 +47,8 @@ dsh plugin --profile desktop add https://github.com/Lumivox-wiz/memory-lattice/r
 dsh plugin --profile desktop add github:Lumivox-wiz/memory-lattice
 ```
 
+> `desktop` 是 **profile 目录名**（DSH Desktop 客户端加载 `profiles/desktop`；`dsh web` 用 `profiles/web`，
+> 另有 `headless`）。装到别的 profile 会「命令报成功、客户端里却没有」。
 > DSH Desktop 的 profile 由客户端自己管理：命令行装完若在界面里看不到，改在客户端内
 > **设置 → 插件** 里添加同一个包名或地址。profile 名不是 `desktop` 的按实际替换。
 
