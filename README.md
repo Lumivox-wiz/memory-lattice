@@ -39,7 +39,7 @@ dsh plugin --profile desktop add memory-lattice
 装指定版本、或不想经 npm，直接用 Release 里的预构建包（不用执行构建脚本）：
 
 ```sh
-dsh plugin --profile desktop add https://github.com/Lumivox-wiz/memory-lattice/releases/download/v0.2.9/memory-lattice-0.2.9.tgz
+dsh plugin --profile desktop add https://github.com/Lumivox-wiz/memory-lattice/releases/download/v0.2.10/memory-lattice-0.2.10.tgz
 ```
 
 从源码装也可以（包管理器会询问是否执行构建脚本，选允许）：
@@ -110,6 +110,47 @@ pwsh -File deploy.ps1          # 拷贝进 profile + 注册 bundle（DSH_HOME �
 |---|---|
 | `memory_recall` | 检索 + 自动强化命中（一次复习） |
 | `memory_write` | 主动写记忆；`layer=ltm` 进审核中心，`layer=stm` 直达短期层 |
+
+## 上手示例
+
+装好之后，下面这条链路是完整可跑的：
+
+**① 聊两句，让它记住你**
+
+正常对话即可。说过的话会进短期记忆；开启「蒸馏」后由模型压成精炼条目（默认关，开启需选 Provider）。
+
+**② 去审核中心放行**
+
+侧栏底部 🧠 → **审核**。新写的长期记忆都停在这里待审，点「批准」才生效。
+> 不想每次点，可以在宿主设置里把审核模式改成 `none`（免审）—— 代价是你不再逐条把关。
+
+**③ 看它有没有真的记住**
+
+在对话里问一句跟之前说过的话相关的问题，比如：
+
+> 我之前说的那个部署问题是什么来着？
+
+它会自动检索并把相关记忆贴进上下文（你能看到注入的条目）；你也可以直接说「查一下关于部署的记忆」触发 `memory_recall`。
+
+**④ 确认记忆在按节奏走**
+
+**概览**页能看到各层条数、强度分布与遗忘曲线；记忆卡片的「复习次数 / 命中次数 / 下次复习时间」会随使用变动。
+
+**⑤ 想带走**
+
+**配置** → **备份** → 「立即备份一次」（或开自动定时备份）。要加密就填口令（≥8 字符）——**忘了无法恢复**。
+换机器：把备份文件拷过去，在**导入 / 迁移**里选它 → 预览 → 执行。
+
+**⑥ 删错了能找回**
+
+删除一律先弹确认框，确认后进回收站。**回收站**是标签栏里的独立选项卡，里面能恢复到删除前的状态。
+
+命令行玩家也可以不碰界面：
+
+```bash
+node tools/import-export.mjs --export backup.json                       # 导出
+node tools/import-export.mjs --import backup.json --mode merge --dry-run  # 预览导入
+```
 
 ## 两种语义召回
 
@@ -188,8 +229,8 @@ BM25 是字面匹配，「换个说法就召回不到」是结构性死角。两
 ```bash
 npm ci                 # 安装（含 peer：dsh-tools / dsh-llm / cordis）
 npm run build          # esbuild 打包客户端 → lib/client.js（自检语法）
-npm test               # 285 项守卫（含开源交付件元数据检查）
-npm run neg            # 负向控制：逐条改坏守卫，确认对应测试真的会红（39 条）
+npm test               # 291 项守卫（含开源交付件元数据检查）
+npm run neg            # 负向控制：逐条改坏守卫，确认对应测试真的会红（45 条）
 npm run preview        # 用假数据渲染 UI 并截图到 tools/preview-*.png（改观感时用；不入库，文档截图在 docs/screenshots/）
 ```
 
@@ -234,6 +275,20 @@ docs/screenshots/       README 用的截图
 1. **还没有真正的 embedding**。现在是三条召回通道：① BM25 字面；② **本地共现向量**（`vectorRecall`，默认开）——靠「常在同一语境出现」把字面不沾边、但语境相近的条目拉到一起；③ **LLM 查询扩写**（`semanticRecall`，默认关、需配 Provider）——把这句话改写成几条近义/上位短语，各查一遍再合并。都够用，但都建立在**本库语料**上：换个完全没交集的说法还是会漏。要彻底解决得接 embedding 模型，两条路的代价不同：用**本地**模型（如 bge-small-zh，约 23MB）下载后完全离线推理、**记忆内容不出站**，代价是打破「零第三方依赖」；接云端 embedding 才是真正的出站，与「零出站」承诺直接冲突。两条都还没做。
 2. **多设备同步目前是单向的**。已经能走通：把库目录（环境变量 `MEMORY_LATTICE_DIR`）放到同步盘目录、并在同步工具里排除 `*.db` / `*-wal` / `*-shm`，开启自动定时备份后 `backups/` 里的备份文件会自动同步出去；另一台机器在「导入 / 迁移」里点**「从备份目录导入」**挑最新一份导进来（增量与加密都支持）。没做的是**自动双向**：冲突合并、后台推送、双向对账都没做，也不打算自己造同步协议 —— 生态里已有 `dsh-backup-sync`（带基线的三方合并）与 `dsh-webdav-sync`（WebDAV 多机一致），但它们同步的是 DSH profile 目录，而本插件的库在 `$DSH_HOME/memory-lattice/`（profile 之外），覆盖不到。
    ⚠️ **别直接用同步盘搬 `memory-lattice.db`**：同目录还有 `-wal` / `-shm`，它们会被独立同步、顺序不可控，搬过去会损坏数据库。**同步导出文件（`backups/`），库文件留各机本地。**
+
+## 获取帮助
+
+| 想做什么 | 去哪 |
+|---|---|
+| 报 bug / 要功能 | [开 Issue](https://github.com/Lumivox-wiz/memory-lattice/issues) |
+| 报安全问题 | 见 [SECURITY.md](./SECURITY.md)（**不要**开公开 Issue） |
+| 参与开发 | 读 [CONTRIBUTING.md](./CONTRIBUTING.md) |
+| 看改了什么 | [CHANGELOG.md](./CHANGELOG.md) |
+| 装不上 / 装完没反应 | 常见原因是装错了 profile（见[安装一节](#安装)的说明），或装完没重启 DSH Desktop |
+
+## 参与贡献
+
+欢迎提 Issue 与 PR —— 贡献指南见 [CONTRIBUTING.md](./CONTRIBUTING.md)，里面写了开发环境、改完要做什么、代码约定。
 
 ## License
 

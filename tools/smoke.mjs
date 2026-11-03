@@ -1098,6 +1098,18 @@ console.log('\n[17] encrypted backup + incremental restore + per-kind count cap'
   check('LICENSE 与 package.json 的作者一致', !!holder && pkg.author.includes(holder[2].trim()), `${holder && holder[2]} vs ${pkg.author}`)
   check('package.json 有仓库地址', !!pkg.repository?.url && !!pkg.homepage && !!pkg.bugs?.url)
   check('README 徽章没有 your-name 占位', !read('README.md').includes('your-name'))
+  // README 是仓库的门面：指南要求的几节不能被删掉
+  const rdm = read('README.md')
+  const needSections = [
+    ['安装', /^## 安装/m], ['使用示例', /^## 上手示例/m], ['获取帮助', /^## 获取帮助/m],
+    ['参与贡献', /^## 参与贡献/m], ['安全边界', /^## 安全与隐私边界/m], ['License', /^## License/m],
+  ]
+  const missing = needSections.filter(([, re]) => !re.test(rdm)).map(([n]) => n)
+  check('README 含指南要求的核心章节', missing.length === 0, missing.join('、'))
+  check('README 链到了贡献指南与求助入口', /CONTRIBUTING\.md/.test(rdm) && /issues/.test(rdm))
+  check('仓库有贡献指南文件', (() => {
+    try { return read('CONTRIBUTING.md').includes('## ') } catch { return false }
+  })())
   check('package.json 发布清单只含运行件与导入导出 CLI', (() => {
     const f = pkg.files || []
     return !f.includes('src') && !f.includes('tools') && f.includes('tools/import-export.mjs')
@@ -1281,9 +1293,43 @@ const tarballVer = (/releases\/download\/v([\d.]+)\//.exec(readme) || [])[1]
 const pkgVer = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8')).version
 check('README 安装说明的 tarball 版本与 package.json 一致', tarballVer === pkgVer, `README=${tarballVer} package=${pkgVer}`)
 
-// +1：本条自身也算一项守卫，此刻还没计入 pass/fail
+// CHANGELOG 是给使用者看的变更记录，不是开发过程流水账：
+// 内部术语（守卫数量、负向控制、复核轮次、空转、自述性说明）一律不许出现在里面。
+const changelog = readFileSync(new URL('../CHANGELOG.md', import.meta.url), 'utf8')
+const changelogJargon = [
+  [/守卫/, '测试项数属于内部过程'],
+  [/负向控制/, '内部测试机制'],
+  [/空转/, '内部测试机制'],
+  [/冒烟/, '内部测试机制'],
+  [/\bsmoke\b/i, '内部测试机制'],
+  [/本机不再/, '作者自述'],
+  [/第\s*\d+\s*轮/, '内部复核轮次'],
+  [/复核第/, '内部复核轮次'],
+  [/交付件/, '作者自述'],
+]
+const jargonHits = changelogJargon.filter(([re]) => re.test(changelog)).map(([, why]) => why)
+check('CHANGELOG 没有开发者内部术语', jargonHits.length === 0, jargonHits.join('、'))
+
+// 每个已发布版本都要在 CHANGELOG 里有条目，且最新条目版本与 package.json 一致
+const chVersions = [...changelog.matchAll(/^## \[([\d.]+)\]/gm)].map((m) => m[1])
+check('CHANGELOG 收录了 package.json 的当前版本', chVersions[0] === pkgVer, `CHANGELOG 最新=${chVersions[0]} package=${pkgVer}`)
+// 版本按新到旧排列 —— 必须逐段按数字比：字符串比较会把 0.2.10 判成小于 0.2.9
+const cmpVer = (a, b) => {
+  const pa = a.split('.').map(Number)
+  const pb = b.split('.').map(Number)
+  for (let i = 0; i < Math.max(pa.length, pb.length); i++) {
+    const d = (pa[i] || 0) - (pb[i] || 0)
+    if (d) return d
+  }
+  return 0
+}
+const ordered = chVersions.every((v, i) => i === 0 || cmpVer(chVersions[i - 1], v) > 0)
+check('CHANGELOG 版本条目按新到旧排列', ordered, chVersions.join(' → '))
+
+// +1：本条自身也算一项守卫，此刻还没计入 pass/fail —— 所以它必须是文件里最后一条检查
 const saidSmoke = Number((/npm test\s+#\s*(\d+)\s*项守卫/.exec(readme) || [])[1])
 check('README 声明的守卫数与实测一致', saidSmoke === pass + fail + 1, `README=${saidSmoke} 实测=${pass + fail + 1}`)
+
 
 console.log(`\n==== ${pass} pass / ${fail} fail ====`)
 if (fail) { console.error('FAILED:\n' + failures.map((f) => ' - ' + f).join('\n')); process.exit(1) }
