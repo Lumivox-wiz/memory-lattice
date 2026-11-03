@@ -4,6 +4,7 @@
 [![version](https://img.shields.io/github/package-json/v/Lumivox-wiz/memory-lattice?color=blue)](./CHANGELOG.md)
 [![node](https://img.shields.io/badge/node-%E2%89%A522-brightgreen.svg)](./package.json)
 [![license](https://img.shields.io/badge/license-MIT-green.svg)](./LICENSE)
+[![dshbase 实测可装](https://dshbase.com/badges/memory-lattice.svg)](https://dshbase.com/zh/plugins/memory-lattice/)
 
 带**艾宾浩斯遗忘曲线**的 DeepSeek Harness（DSH）记忆插件。
 
