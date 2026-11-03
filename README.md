@@ -16,7 +16,7 @@
 > short-term memories **expire after 48h**, long-term ones are rescheduled by **Ebbinghaus / SM-2 curves**,
 > and rarely-used ones **fall asleep** (revivable) rather than silently eating your context budget.
 > Long-term writes stop in an **approval center** — the agent cannot approve on its own.
-> Local-first, **zero runtime dependencies** (`node:sqlite` + own BM25 / vector index), MIT.
+> Local-first, **no external services** — the only runtime dependency is DSH's own host-provided `@deepseek-ai/schemastery`; everything else is `node:sqlite` + self-built BM25 / vector index. MIT.
 
 ![概览](./docs/screenshots/overview.png)
 
@@ -30,7 +30,7 @@
 - **会长**：人格画像从长期记忆里低频重新合成，版本化快照 + 证据链 + 一键否定。
 - **可带走**：加密导出（AES-256-GCM）、增量备份、导入预览、按类型保留策略、整库清除。
 - **删错了能找回**：删除一律先确认、再进回收站；回收站里能恢复到删除前的状态（软删除，不是终态）。
-- **零运行时依赖**：`node:sqlite` + 自研 BM25 / 向量索引；内置 UI 跟随 DSH 主题。
+- **运行时只依赖 DSH 自家包**：唯一的依赖是 `@deepseek-ai/schemastery`（由宿主提供）；检索为 `node:sqlite` + 自研 BM25 / 向量索引，内置 UI 跟随 DSH 主题。
 
 ## 安装
 
@@ -70,7 +70,7 @@ cd memory-lattice
 pwsh -File deploy.ps1          # 拷贝进 profile + 注册 bundle（DSH_HOME 或 ~/.dsh）
 ```
 
-不需要 `npm ci`：`lib/client.js` 已随仓库提交，运行时零第三方依赖（`node:sqlite` + 自研检索）。
+不需要 `npm ci`：`lib/client.js` 已随仓库提交；运行时除 DSH 自家包（`@deepseek-ai/schemastery`，宿主提供）外无其他依赖（`node:sqlite` + 自研检索）。
 `npm ci` 只在你要跑测试或改代码时才需要。
 
 然后**完全退出 DSH Desktop（含托盘）再启动**——客户端 bundle 按 URL 缓存在内存里，热重载换不掉。启动后：设置 → 「忆枢记忆」、侧栏底部 🧠 入口。
@@ -111,7 +111,7 @@ pwsh -File deploy.ps1          # 拷贝进 profile + 注册 bundle（DSH_HOME �
 - **元记忆 `memory_about`**：「关于 X 我知道什么、多可信」——命中次数、被确认次数、强度、生命周期、入库天数、邻居数；只读，不触发强化。
 - **审核红线**：LTM 写入一律停在待审（auditMode 可配 none 免审）；Agent 的 systemPrompt 里注入了「禁止自行批准」的强制规则。
 - **记忆云图**：3D 透视星云（参考 dsh-chain），按类型分簇、发光、慢速自转，节点大小 = 记忆强度；拖空白旋转 / 拖节点整理 / 滚轮缩放 / 单击聚焦。
-- 零第三方依赖：node:sqlite + 自研 IDF/BM25 检索；UI 跟随 DSH 原生主题变量。
+- 除 DSH 自家包外无其他运行时依赖：`node:sqlite` + 自研 IDF/BM25 检索；UI 跟随 DSH 原生主题变量。
 
 ## 工具（Agent 侧）
 
@@ -281,7 +281,7 @@ docs/screenshots/       README 用的截图
 
 ## 已知未做
 
-1. **还没有真正的 embedding**。现在是三条召回通道：① BM25 字面；② **本地共现向量**（`vectorRecall`，默认开）——靠「常在同一语境出现」把字面不沾边、但语境相近的条目拉到一起；③ **LLM 查询扩写**（`semanticRecall`，默认关、需配 Provider）——把这句话改写成几条近义/上位短语，各查一遍再合并。都够用，但都建立在**本库语料**上：换个完全没交集的说法还是会漏。要彻底解决得接 embedding 模型，两条路的代价不同：用**本地**模型（如 bge-small-zh，约 23MB）下载后完全离线推理、**记忆内容不出站**，代价是打破「零第三方依赖」；接云端 embedding 才是真正的出站，与「零出站」承诺直接冲突。两条都还没做。
+1. **还没有真正的 embedding**。现在是三条召回通道：① BM25 字面；② **本地共现向量**（`vectorRecall`，默认开）——靠「常在同一语境出现」把字面不沾边、但语境相近的条目拉到一起；③ **LLM 查询扩写**（`semanticRecall`，默认关、需配 Provider）——把这句话改写成几条近义/上位短语，各查一遍再合并。都够用，但都建立在**本库语料**上：换个完全没交集的说法还是会漏。要彻底解决得接 embedding 模型，两条路的代价不同：用**本地**模型（如 bge-small-zh，约 23MB）下载后完全离线推理、**记忆内容不出站**，代价是引入一个真正的第三方运行时依赖（不再是「只依赖 DSH 自家包」）；接云端 embedding 才是真正的出站，与「零出站」承诺直接冲突。两条都还没做。
 2. **多设备同步目前是单向的**。已经能走通：把库目录（环境变量 `MEMORY_LATTICE_DIR`）放到同步盘目录、并在同步工具里排除 `*.db` / `*-wal` / `*-shm`，开启自动定时备份后 `backups/` 里的备份文件会自动同步出去；另一台机器在「导入 / 迁移」里点**「从备份目录导入」**挑最新一份导进来（增量与加密都支持）。没做的是**自动双向**：冲突合并、后台推送、双向对账都没做，也不打算自己造同步协议 —— 生态里已有 `dsh-backup-sync`（带基线的三方合并）与 `dsh-webdav-sync`（WebDAV 多机一致），但它们同步的是 DSH profile 目录，而本插件的库在 `$DSH_HOME/memory-lattice/`（profile 之外），覆盖不到。
    ⚠️ **别直接用同步盘搬 `memory-lattice.db`**：同目录还有 `-wal` / `-shm`，它们会被独立同步、顺序不可控，搬过去会损坏数据库。**同步导出文件（`backups/`），库文件留各机本地。**
 
