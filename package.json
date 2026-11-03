@@ -38,7 +38,8 @@
     "build": "node tools/build.mjs",
     "test": "node tools/smoke.mjs",
     "neg": "node tools/neg-controls.mjs",
-    "preview": "node tools/preview-graph.mjs"
+    "preview": "node tools/preview-graph.mjs",
+    "verify:install": "node tools/verify-install.mjs"
   },
   "dependencies": {
     "@deepseek-ai/schemastery": "^3.18.1"

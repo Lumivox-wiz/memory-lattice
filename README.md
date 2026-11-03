@@ -9,6 +9,14 @@
 
 与「记了就不忘」的传统记忆插件不同，忆枢的记忆有生命周期：**短期记忆会过期，长期记忆要复习，久不用会沉睡，人格从记忆里长出来。**
 
+> **English**
+>
+> A DSH (DeepSeek Harness) memory plugin whose memories have a **lifecycle** — instead of storing everything forever:
+> short-term memories **expire after 48h**, long-term ones are rescheduled by **Ebbinghaus / SM-2 curves**,
+> and rarely-used ones **fall asleep** (revivable) rather than silently eating your context budget.
+> Long-term writes stop in an **approval center** — the agent cannot approve on its own.
+> Local-first, **zero runtime dependencies** (`node:sqlite` + own BM25 / vector index), MIT.
+
 ![概览](./docs/screenshots/overview.png)
 
 > **适用范围**：单用户、本地 DSH profile。安全边界与**非目标**（不做 OS 级隔离、不防同用户进程、不做静态加密）见[威胁模型](#威胁模型适用--不适用)。
