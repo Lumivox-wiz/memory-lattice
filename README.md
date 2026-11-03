@@ -32,6 +32,9 @@
 dsh plugin --profile desktop add memory-lattice
 ```
 
+它同时是个标准 npm 包（npm 页面上的 `npm i memory-lattice` 装的是同一份），
+但**要让 DSH 加载它就得走宿主插件管理器** —— 直接 `npm i` 到某个目录，DSH 不会认。
+
 装指定版本、或不想经 npm，直接用 Release 里的预构建包（不用执行构建脚本）：
 
 ```sh
@@ -59,8 +62,6 @@ pwsh -File deploy.ps1          # 拷贝进 profile + 注册 bundle（DSH_HOME �
 `npm ci` 只在你要跑测试或改代码时才需要。
 
 然后**完全退出 DSH Desktop（含托盘）再启动**——客户端 bundle 按 URL 缓存在内存里，热重载换不掉。启动后：设置 → 「忆枢记忆」、侧栏底部 🧠 入口。
-
-**开发期**也可以直接让 profile 的 `dependencies` 指向本仓库（`link:<repo>`），改完 `npm run build` 后重启。
 
 ## 截图
 
@@ -189,7 +190,8 @@ npm run preview        # 用假数据渲染 UI 并截图到 tools/preview-*.png�
 ```
 
 - CI（`.github/workflows/ci.yml`）：`npm ci` → `npm audit`（生产依赖）→ 冒烟 → 负向控制 → 校验「`lib/client.js` 与源码一致」；Actions 固定到 commit SHA。
-- 发 npm：推 tag 即发布（`git tag v0.2.4 && git push --tags`）。`publish.yml` 走 npm Trusted Publishing（OIDC），**本机不需要 token、也不需要 2FA 验证码**，provenance 由 npm 自动生成；发布前会跑满守卫，并校验 tag 与 `package.json` 版本一致。
+- 发 npm：推 tag 即发布（`git tag v<版本号> && git push --tags`，版本号须与 `package.json` 一致，publish.yml 会校验）。`publish.yml` 走 npm Trusted Publishing（OIDC），**本机不需要 token、也不需要 2FA 验证码**，provenance 由 npm 自动生成；发布前会跑满守卫，发完自动建 Release 并挂预构建 tarball。
+- 迭代时也可以让 profile 的 `dependencies` 指向本仓库（`link:<repo>`），改完 `npm run build` 后重启客户端。
 
 ```powershell
 pwsh -File deploy.ps1              # 拷贝进 profile + 注册 bundle（DSH_HOME 或 ~/.dsh）
