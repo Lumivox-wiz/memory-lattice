@@ -1219,6 +1219,10 @@ console.log('\n[18] 自动定时备份：目录越界回落 / 口令不落盘 / 
     '删除按钮附近没有 confirm')
   check('回收站有恢复入口', csrc.includes("onAct('restore'"))
   check('后端提供 restore 动作', typeof store.audit.restore === 'function')
+  // 只看 TABS 数组：全文件搜 'recycle' 会被别处的 tab === 'recycle' 命中，守卫就形同虚设
+  const tabsBlock = (csrc.match(/const TABS = \[[\s\S]*?\n {2}\]/) || [''])[0]
+  check('回收站是独立选项卡', /'recycle'/.test(tabsBlock) && /tab === 'recycle'/.test(csrc), tabsBlock.slice(0, 160))
+  check('记忆页的状态筛选里不再重复出现回收站', !/value="deleted"/.test(csrc))
 }
 
 closeAllDb()

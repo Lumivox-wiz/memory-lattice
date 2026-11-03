@@ -326,7 +326,9 @@ function MemoryCard({ m, onAct, selectable }) {
               onAct('delete', m)
             }}>删除</button>}
             {m.status === 'deleted' && <button onClick={() => onAct('restore', m)}>恢复</button>}
-            <span className="ml-dim">#{m.id} · {LAYER_LABEL[m.layer]} · {KIND_LABEL[m.kind] || m.kind} · {SOURCE_LABEL[m.source] || m.source || '—'} · 复习 {m.review_count} 次 · 命中 {m.hits}</span>
+            <span className="ml-dim">#{m.id} · {LAYER_LABEL[m.layer]} · {KIND_LABEL[m.kind] || m.kind} · {SOURCE_LABEL[m.source] || m.source || '—'} · 复习 {m.review_count} 次 · 命中 {m.hits}
+              {m.status === 'deleted' && m.deleted_at ? ` · 删除于 ${String(m.deleted_at).slice(0, 16).replace('T', ' ')}` : ''}
+            </span>
           </div>
         </div>
       )}
@@ -346,6 +348,7 @@ function diffLines(oldText, newText) {
 // App 同时服务设置页 section / 侧栏弹窗 / 本地预览（tools/preview-graph.mjs）
 export function App({ t }) {
   const [tab, setTab] = useState('overview')
+  const [recycleItems, setRecycleItems] = useState([])
   const [graphFull, setGraphFull] = useState(false)
   const [autoRotate, setAutoRotate] = useState(true)
   const [showLabels, setShowLabels] = useState(true)
@@ -389,6 +392,7 @@ export function App({ t }) {
   const loadGraph = useCallback(() => api('/graph').then((d) => d.ok && setGraphData(d)), [])
   const loadPersona = useCallback(() => api('/persona').then((d) => d.ok && setPersona(d)), [])
   const loadCfg = useCallback(() => api('/config').then((d) => d.ok && setCfg(d)), [])
+  const loadRecycle = useCallback(() => api('/list?status=deleted&limit=200').then((d) => d.ok && setRecycleItems(d.items || [])), [])
 
   useEffect(() => { loadOverview() }, [loadOverview])
   useEffect(() => { if (tab === 'overview') { loadPatrol(); loadWorking() } }, [tab, loadPatrol, loadWorking])
@@ -397,12 +401,13 @@ export function App({ t }) {
   useEffect(() => { if (tab === 'graph') loadGraph() }, [tab, loadGraph])
   useEffect(() => { if (tab === 'persona') loadPersona() }, [tab, loadPersona])
   useEffect(() => { if (tab === 'config') loadCfg() }, [tab, loadCfg])
+  useEffect(() => { if (tab === 'recycle') loadRecycle() }, [tab, loadRecycle])
 
   const act = async (action, m) => {
     if (action === 'reinforce') return onReinforce(m) // 审核中心里的强化按钮也走这里（踩过：错走 /audit 报「未知操作」）
     const r = await api('/audit', { method: 'POST', body: { id: m.id, action } })
     say(r.ok ? `#${m.id} ${STATUS_LABEL[action] || action}完成` : `操作失败：${r.error}`)
-    loadList(); loadReview(); loadOverview()
+    loadList(); loadReview(); loadOverview(); loadRecycle()
   }
   const onReinforce = async (m) => {
     const r = await api('/reinforce', { method: 'POST', body: { id: m.id, quality: 5 } })
@@ -429,9 +434,11 @@ export function App({ t }) {
   }
 
   const pendingCount = ov?.totals?.pending ?? 0
+  const recycleCount = ov?.totals?.deleted ?? 0
   const TABS = [
     ['overview', '概览'], ['list', '记忆'], ['review', `审核${pendingCount ? ` (${pendingCount})` : ''}`],
     ['persona', '人格'], ['graph', '云图'], ['config', '配置'],
+    ['recycle', `回收站${recycleCount ? ` (${recycleCount})` : ''}`],
   ]
 
   return (
@@ -591,7 +598,7 @@ export function App({ t }) {
             </select>
             <select value={filter.status} onChange={(e) => setFilter({ ...filter, status: e.target.value })}>
               <option value="">生效中</option><option value="active">生效</option><option value="pending">待审</option>
-              <option value="sleeping">沉睡</option><option value="rejected">已驳回</option><option value="deleted">回收站</option>
+              <option value="sleeping">沉睡</option><option value="rejected">已驳回</option>
             </select>
             <select value={filter.kind} onChange={(e) => setFilter({ ...filter, kind: e.target.value })}>
               <option value="">全部类型</option>
@@ -602,6 +609,15 @@ export function App({ t }) {
           {items.length ? items.map((m) => (
             <MemoryCard key={m.id} m={m} selectable onAct={(a, mm) => a === 'reinforce' ? onReinforce(mm) : act(a, mm)} />
           )) : <div className="ml-empty">没有匹配的记忆</div>}
+        </div>
+      )}
+
+      {tab === 'recycle' && (
+        <div className="ml-pane">
+          <div className="ml-hint">回收站里的记忆还没被真正删掉 —— 点「恢复」会回到删除前的状态（沉睡过的回沉睡，否则回生效）。彻底清除目前只有配置页的「清空记忆库」。</div>
+          {recycleItems.length ? recycleItems.map((m) => (
+            <MemoryCard key={m.id} m={m} onAct={act} />
+          )) : <div className="ml-empty">回收站是空的 ✓</div>}
         </div>
       )}
 

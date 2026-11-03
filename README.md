@@ -39,7 +39,7 @@ dsh plugin --profile desktop add memory-lattice
 装指定版本、或不想经 npm，直接用 Release 里的预构建包（不用执行构建脚本）：
 
 ```sh
-dsh plugin --profile desktop add https://github.com/Lumivox-wiz/memory-lattice/releases/download/v0.2.7/memory-lattice-0.2.7.tgz
+dsh plugin --profile desktop add https://github.com/Lumivox-wiz/memory-lattice/releases/download/v0.2.8/memory-lattice-0.2.8.tgz
 ```
 
 从源码装也可以（包管理器会询问是否执行构建脚本，选允许）：
@@ -139,7 +139,7 @@ BM25 是字面匹配，「换个说法就召回不到」是结构性死角。两
 | 整库清除 | 配置页「清空记忆库」，需二次确认；硬删除 + VACUUM |
 | 画像证据链 | 每个快照记录用了哪几条记忆；查看历史快照可看到来源、强度、命中、确认次数与复习时间 |
 
-以上删除（除整库清除）都是**软删除**：删除前先问一次，确认后移进回收站；把列表筛选切到「回收站」可以**恢复**——它会回到删除前的状态（沉睡过的回沉睡，否则回生效）。
+以上删除（除整库清除）都是**软删除**：删除前先问一次，确认后移进回收站；回收站是标签栏里的**独立选项卡**（带条目数），里面可以**恢复**——它会回到删除前的状态（沉睡过的回沉睡，否则回生效）。
 
 ### 自动定时备份的三条边界
 
@@ -187,8 +187,8 @@ BM25 是字面匹配，「换个说法就召回不到」是结构性死角。两
 ```bash
 npm ci                 # 安装（含 peer：dsh-tools / dsh-llm / cordis）
 npm run build          # esbuild 打包客户端 → lib/client.js（自检语法）
-npm test               # 274 项守卫（含开源交付件元数据检查）
-npm run neg            # 负向控制：逐条改坏守卫，确认对应测试真的会红（36 条）
+npm test               # 276 项守卫（含开源交付件元数据检查）
+npm run neg            # 负向控制：逐条改坏守卫，确认对应测试真的会红（37 条）
 npm run preview        # 用假数据渲染 UI 并截图到 tools/preview-*.png（改观感时用；不入库，文档截图在 docs/screenshots/）
 ```
 
