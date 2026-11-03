@@ -39,7 +39,7 @@ dsh plugin --profile desktop add memory-lattice
 装指定版本、或不想经 npm，直接用 Release 里的预构建包（不用执行构建脚本）：
 
 ```sh
-dsh plugin --profile desktop add https://github.com/Lumivox-wiz/memory-lattice/releases/download/v0.2.8/memory-lattice-0.2.8.tgz
+dsh plugin --profile desktop add https://github.com/Lumivox-wiz/memory-lattice/releases/download/v0.2.9/memory-lattice-0.2.9.tgz
 ```
 
 从源码装也可以（包管理器会询问是否执行构建脚本，选允许）：
@@ -132,6 +132,7 @@ BM25 是字面匹配，「换个说法就召回不到」是结构性死角。两
 | 增量备份 | 只导出上次水位之后变过的条目 + 一份「对端已删除」清单；恢复时同步删除，不会越恢复越多。按 `id + updated_at` upsert，内容没变就跳过 |
 | 自动定时备份 | 默认关。开启后按 `backupIntervalHours`（默认 24h）自动跑增量备份写到库内目录，只保留最近 `backupKeep` 份（默认 7）。开关 / 间隔 / 保留份数在插件设置里；加密口令**只**从环境变量 `MEMORY_LATTICE_BACKUP_PASSPHRASE` 读取，缺失时本次跳过且不写任何文件 |
 | 导入 / 迁移 | 配置页「导入 / 迁移」：选文件 → 预览（新建/更新/跳过/合并/同步删除）→ 执行。四种模式 `skip`（默认，幂等）/ `merge`（近似重复转强化）/ `new` / `replace`（需手输 REPLACE）。加密文件填口令即可，调度状态一起搬 |
+| 从备份目录导入 | 同一面板里点「从备份目录导入…」→ 列出备份目录里的自家备份文件（时间 + 大小）→ 选一份预览并导入。**跨机同步的入口**：备份目录放到同步盘目录后，另一台机器直接在这里挑最新一份导进来（只认自家命名的文件，路径穿越被拒） |
 | 命令行搬迁 | `node tools/import-export.mjs --export backup.json` / `--import backup.json --mode merge --dry-run`（不依赖 DSH 运行） |
 | 保留策略 · 天数 | 配置页按类型逐项输入：超过天数且**从没被召回**才淘汰；核心层显示「无期限」 |
 | 保留策略 · 条数 | 按类型设置上限，超出时按「命中次数 → 强度 → 最后更新」从最弱、最久没用的开始淘汰；核心层豁免 |
@@ -187,8 +188,8 @@ BM25 是字面匹配，「换个说法就召回不到」是结构性死角。两
 ```bash
 npm ci                 # 安装（含 peer：dsh-tools / dsh-llm / cordis）
 npm run build          # esbuild 打包客户端 → lib/client.js（自检语法）
-npm test               # 276 项守卫（含开源交付件元数据检查）
-npm run neg            # 负向控制：逐条改坏守卫，确认对应测试真的会红（37 条）
+npm test               # 285 项守卫（含开源交付件元数据检查）
+npm run neg            # 负向控制：逐条改坏守卫，确认对应测试真的会红（39 条）
 npm run preview        # 用假数据渲染 UI 并截图到 tools/preview-*.png（改观感时用；不入库，文档截图在 docs/screenshots/）
 ```
 
@@ -230,8 +231,9 @@ docs/screenshots/       README 用的截图
 
 ## 已知未做
 
-1. 真正的向量语义仍然依赖「同一语料里共同出现」——换个完全没交集的说法还是会漏。彻底解决要上 embedding 模型，但两条路的代价不同：用**本地**模型（如 bge-small-zh，约 23MB）下载后完全离线推理、**记忆内容不出站**，代价是打破「零第三方依赖」；接云端 embedding 才是真正的出站，与「零出站」承诺直接冲突。目前两者都没做。
-2. 多设备同步（当前是「导出 → 导入」的人工流程）。自动定时备份已补齐，但换机器仍需手动导出再导入。
+1. **还没有真正的 embedding**。现在是三条召回通道：① BM25 字面；② **本地共现向量**（`vectorRecall`，默认开）——靠「常在同一语境出现」把字面不沾边、但语境相近的条目拉到一起；③ **LLM 查询扩写**（`semanticRecall`，默认关、需配 Provider）——把这句话改写成几条近义/上位短语，各查一遍再合并。都够用，但都建立在**本库语料**上：换个完全没交集的说法还是会漏。要彻底解决得接 embedding 模型，两条路的代价不同：用**本地**模型（如 bge-small-zh，约 23MB）下载后完全离线推理、**记忆内容不出站**，代价是打破「零第三方依赖」；接云端 embedding 才是真正的出站，与「零出站」承诺直接冲突。两条都还没做。
+2. **多设备同步目前是单向的**。已经能走通：把库目录（环境变量 `MEMORY_LATTICE_DIR`）放到同步盘目录、并在同步工具里排除 `*.db` / `*-wal` / `*-shm`，开启自动定时备份后 `backups/` 里的备份文件会自动同步出去；另一台机器在「导入 / 迁移」里点**「从备份目录导入」**挑最新一份导进来（增量与加密都支持）。没做的是**自动双向**：冲突合并、后台推送、双向对账都没做，也不打算自己造同步协议 —— 生态里已有 `dsh-backup-sync`（带基线的三方合并）与 `dsh-webdav-sync`（WebDAV 多机一致），但它们同步的是 DSH profile 目录，而本插件的库在 `$DSH_HOME/memory-lattice/`（profile 之外），覆盖不到。
+   ⚠️ **别直接用同步盘搬 `memory-lattice.db`**：同目录还有 `-wal` / `-shm`，它们会被独立同步、顺序不可控，搬过去会损坏数据库。**同步导出文件（`backups/`），库文件留各机本地。**
 
 ## License
 

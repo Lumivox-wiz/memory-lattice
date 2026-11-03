@@ -2,7 +2,7 @@
 // 覆盖：艾宾浩斯数学 / 存储与审核状态机 / STM 生命周期 / 捕获链路 / 人格 / 宿主契约（假 ctx 全流程）
 // 跑法：node tools/smoke.mjs   —— 任何一条 FAIL 都 exit 1
 
-import { mkdtempSync, rmSync, readFileSync, existsSync, writeFileSync, readdirSync, utimesSync } from 'node:fs'
+import { mkdtempSync, rmSync, readFileSync, existsSync, writeFileSync, readdirSync, utimesSync, copyFileSync, mkdirSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
 import { getDb, setConfig, closeAllDb } from '../lib/db.js'
@@ -1143,13 +1143,54 @@ console.log('\n[18] 自动定时备份：目录越界回落 / 口令不落盘 / 
   // ---------- ③ 明文：首跑全量 → 推进水位 → 次跑增量 ----------
   const r1 = backup.runAutoBackup(root, { keep: 5 })
   check('明文自动备份成功落盘', r1.ok === true && existsSync(r1.file) && r1.bytes > 0, JSON.stringify({ ok: r1.ok, file: r1.file }))
+  // 往备份目录里塞一个**不是自家备份**的文件：列目录必须看不见它
+  writeFileSync(path.join(inside, 'notes.txt'), '用户自己的文件')
   check('首次无水位 → 走全量', r1.mode === 'full', r1.mode)
   check('自动备份后水位推进', backup.readWatermark(root) === r1.stats.watermark)
   check('lastAutoBackupAt 可回读（UI 显示用）', backup.readLastAutoBackupAt(root) === r1.stats.watermark)
   const r2 = backup.runAutoBackup(root, { keep: 5 })
   check('第二次自动备份走增量', r2.mode === 'incremental', r2.mode)
 
-  // ---------- ④ 加密：环境变量齐了就落信封 ----------
+  // ---------- ④ 从备份目录导入（跨机同步入口）----------
+  const listed = backup.listBackupFiles(inside)
+  check('备份目录能列出自家备份文件', listed.length >= 1 && listed.every((f) => backup.BACKUP_FILE_RE.test(f.name)), JSON.stringify(listed.map((f) => f.name)))
+  check('列目录不认非自家文件', !listed.some((f) => f.name === 'notes.txt'))
+  const newest = listed[0]
+  const readBack = backup.readBackupFile(inside, newest.name)
+  check('能读回备份文件内容', typeof readBack === 'string' && readBack.length > 0)
+  let threw = ''
+  try { backup.readBackupFile(inside, '../../../etc/passwd') } catch (e) { threw = String(e?.message || e) }
+  check('文件名带路径分隔符被拒（防目录穿越）', /不合法/.test(threw), threw)
+  threw = ''
+  try { backup.readBackupFile(inside, 'notes.txt') } catch (e) { threw = String(e?.message || e) }
+  check('非自家文件名的读取被拒', /不合法/.test(threw), threw)
+
+  // API 层：从备份目录导入一个文件（跨机同步的完整链路）
+  // 模拟真实场景：A 机备份 → 文件经同步盘落到 B 机的备份目录 → B 机导入
+  const srcRoot = mkdtempSync(path.join(tmpdir(), 'memory-lattice-src-'))
+  store.writeMemory(srcRoot, { layer: 'ltm', kind: 'knowledge', title: '目录导入甲', body: '目录导入正文', status: 'active' })
+  const dirRun = backup.runAutoBackup(srcRoot, { keep: 3 })
+  const dstRoot = mkdtempSync(path.join(tmpdir(), 'memory-lattice-dst-'))
+  mkdirSync(path.join(dstRoot, 'backups'), { recursive: true })
+  const dirName = path.basename(dirRun.file)
+  copyFileSync(dirRun.file, path.join(dstRoot, 'backups', dirName))
+  const dirHandler = createApi({
+    vaultDir: () => dstRoot,
+    sessionToken: 'test-token',
+    getSettings: () => ({ backupDir: '' }),
+    getLlm: () => null,
+    log: () => {},
+  })
+  const dirList = await callApi(dirHandler, '/backup')
+  check('/backup 列出备份目录文件', dirList.code === 200 && Array.isArray(dirList.body.files) && dirList.body.files.length >= 1, JSON.stringify(dirList.body?.files?.map((f) => f.name)))
+  const dirPv = await callApi(dirHandler, '/import/preview', { method: 'POST', body: { file: dirName, mode: 'skip' } })
+  check('可从备份目录预览', dirPv.code === 200 && dirPv.body.total >= 1, JSON.stringify(dirPv.body).slice(0, 120))
+  const dirApply = await callApi(dirHandler, '/import', { method: 'POST', body: { file: dirName, mode: 'skip' } })
+  check('可从备份目录导入落库', dirApply.code === 200 && dirApply.body.created >= 1, JSON.stringify(dirApply.body))
+  const dirEscape = await callApi(dirHandler, '/import', { method: 'POST', body: { file: '../evil.json', mode: 'skip' } })
+  check('从备份目录导入不接受路径穿越文件名', dirEscape.code === 400, JSON.stringify(dirEscape.body))
+
+  // ---------- ⑤ 加密：环境变量齐了就落信封 ----------
   process.env[backup.BACKUP_PASS_ENV] = 'auto-backup-secret'
   const r3 = backup.runAutoBackup(root, { encrypt: true, keep: 5 })
   const r3raw = readFileSync(r3.file, 'utf8')

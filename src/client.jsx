@@ -1121,33 +1121,53 @@ function ImportPanel({ onDone }) {
   const [pass, setPass] = useState('')
   const [busy, setBusy] = useState(false)
   const [msg, setMsg] = useState('')
+  const [src, setSrc] = useState({ kind: 'local', name: '' })
+  const [dirFiles, setDirFiles] = useState([])
+  const [dirPath, setDirPath] = useState('')
 
   const pick = async (file) => {
     if (!file) return
     setBusy(true); setMsg(''); setPreview(null)
     try {
       const text = await file.text()
-      setPayload(text); setFileName(file.name)
+      setPayload(text); setFileName(file.name); setSrc({ kind: 'local', name: file.name })
       const r = await api('/import/preview', { method: 'POST', body: { payload: text, mode, passphrase: pass } })
       if (r.ok) setPreview(r)
       else setMsg('解析失败：' + (r.error || '未知错误'))
     } catch (e) { setMsg('读取文件失败：' + String(e?.message || e)) }
     setBusy(false)
   }
+  // 跨机同步入口：从备份目录里挑一份自家备份文件（目录通常指到同步盘）
+  const loadDir = async () => {
+    const r = await api('/backup')
+    if (!r.ok) { setMsg('读不到备份目录：' + (r.error || '')); return }
+    setDirFiles(r.files || []); setDirPath(r.dir || '')
+    if (!r.files?.length) setMsg('备份目录里还没有备份文件（先点「立即备份一次」，或等定时任务跑一轮）')
+  }
+  const pickDir = async (name) => {
+    if (!name) return
+    setBusy(true); setMsg(''); setPreview(null); setPayload(''); setFileName('')
+    setSrc({ kind: 'dir', name })
+    const r = await api('/import/preview', { method: 'POST', body: { file: name, mode, passphrase: pass } })
+    if (r.ok) setPreview(r)
+    else setMsg('解析失败：' + (r.error || '未知错误'))
+    setBusy(false)
+  }
+  const reqBody = (extra) => (src.kind === 'dir' ? { file: src.name, ...extra } : { payload, ...extra })
   const rePreview = async (nextMode) => {
     setMode(nextMode); setPreview(null)
-    if (!payload) return
-    const r = await api('/import/preview', { method: 'POST', body: { payload, mode: nextMode, passphrase: pass } })
+    if (!payload && src.kind !== 'dir') return
+    const r = await api('/import/preview', { method: 'POST', body: reqBody({ mode: nextMode, passphrase: pass }) })
     if (r.ok) setPreview(r); else setMsg('解析失败：' + (r.error || ''))
   }
   const run = async () => {
     if (mode === 'replace' && confirmText !== 'REPLACE') { setMsg('整库替换需要输入 REPLACE 确认'); return }
     setBusy(true); setMsg('')
-    const r = await api('/import', { method: 'POST', body: { payload, mode, confirm: confirmText, passphrase: pass } })
+    const r = await api('/import', { method: 'POST', body: reqBody({ mode, confirm: confirmText, passphrase: pass }) })
     setBusy(false)
     if (r.ok) {
       setMsg(`导入完成：新建 ${r.created} · 跳过 ${r.skipped} · 合并 ${r.merged} · 画像快照 ${r.personas}${r.wiped ? ` · 先清空 ${r.wiped}` : ''}`)
-      setPreview(null); setPayload(''); setFileName(''); setConfirmText('')
+      setPreview(null); setPayload(''); setFileName(''); setConfirmText(''); setSrc({ kind: 'local', name: '' })
       onDone?.()
     } else setMsg('导入失败：' + (r.error || '未知错误'))
   }
@@ -1160,8 +1180,22 @@ function ImportPanel({ onDone }) {
         {fileName && <span className="ml-dim">{fileName}</span>}
       </div>
       <div className="ml-import-row">
+        <button onClick={loadDir}>从备份目录导入…</button>
+        {dirFiles.length > 0 && (
+          <select value={src.kind === 'dir' ? src.name : ''} onChange={(e) => pickDir(e.target.value)}>
+            <option value="">选择备份文件…</option>
+            {dirFiles.map((f) => (
+              <option key={f.name} value={f.name}>
+                {f.name} · {new Date(f.mtime).toLocaleString('zh-CN')} · {Math.round(f.size / 1024)}KB
+              </option>
+            ))}
+          </select>
+        )}
+        {dirPath && <span className="ml-dim" title="备份目录">目录：{dirPath}</span>}
+      </div>
+      <div className="ml-import-row">
         <input type="password" placeholder="加密备份口令（明文文件留空）" value={pass} autoComplete="off"
-          onChange={(e) => setPass(e.target.value)} onBlur={() => { if (payload) rePreview(mode) }} />
+          onChange={(e) => setPass(e.target.value)} onBlur={() => { if (payload || src.kind === 'dir') rePreview(mode) }} />
       </div>
       <div className="ml-import-row">
         <select value={mode} onChange={(e) => rePreview(e.target.value)}>
@@ -1195,7 +1229,8 @@ function ImportPanel({ onDone }) {
         </div>
       )}
       {msg && <small>{msg}</small>}
-      <small>从本插件导出的 JSON 或别的工具的记忆 JSON 都能导入；调度状态（强度 / 间隔 / 复习次数）一起搬，导入后遗忘曲线接着走。</small>
+      <small>从本插件导出的 JSON 或别的工具的记忆 JSON 都能导入；调度状态（强度 / 间隔 / 复习次数）一起搬，导入后遗忘曲线接着走。<br />
+        「从备份目录导入」走的是备份目录里的自家备份文件 —— 把该目录指到网盘/同步盘目录，就是**单向跨机同步**的入口（另一台机器点一下导入即可）。</small>
     </div>
   )
 }
