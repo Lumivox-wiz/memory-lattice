@@ -145,6 +145,18 @@ console.log('\n[2] store + audit')
   check('删除走软删', del.ok && store.getOne(ROOT, r1.id).status === 'deleted')
   check('软删后召回不可见', store.search(ROOT, 'SM-2', { layers: ['ltm'] }).some((h) => h.id === r1.id) === false)
 
+  // 回收站必须真能回滚：deleted 不是终态
+  const rest = store.audit.restore(ROOT, r1.id)
+  const backCard = store.getOne(ROOT, r1.id)
+  check('回收站里的记忆能恢复', rest.ok === true && backCard.status === 'active' && !backCard.deleted_at, JSON.stringify({ ok: rest.ok, status: backCard.status, deleted_at: backCard.deleted_at }))
+  check('恢复后重新进入召回', store.search(ROOT, 'SM-2', { layers: ['ltm'] }).some((h) => h.id === r1.id))
+  const sl = store.writeMemory(ROOT, { layer: 'ltm', kind: 'fact', title: '沉睡卡', body: '睡着的正文', status: 'active' })
+  store.audit.sleep(ROOT, sl.id)
+  store.audit.delete(ROOT, sl.id)
+  store.audit.restore(ROOT, sl.id)
+  check('恢复回到删除前的状态（沉睡卡仍沉睡）', store.getOne(ROOT, sl.id).status === 'sleeping', store.getOne(ROOT, sl.id).status)
+  check('非回收站里的记忆不能恢复', store.audit.restore(ROOT, sl.id).ok === false)
+
   // 编辑 active 卡 → 退回 pending
   const r4 = store.writeMemory(ROOT, { layer: 'ltm', kind: 'fact', title: '测试事实卡', body: '内容', status: 'active' })
   store.audit.edit(ROOT, r4.id, { body: '改过的内容' })
@@ -1198,6 +1210,15 @@ console.log('\n[18] 自动定时备份：目录越界回落 / 口令不落盘 / 
   check('发布工作流校验 tag 与版本号一致', /npm pkg get version/.test(pub) && /refs\/tags\//.test(pub))
   // 只打 tag 不建 Release 的话，市场条目引用的 tarball 链接会 404
   check('发布后建 GitHub Release 并挂 tarball', /gh release create/.test(pub) && /npm pack/.test(pub) && /contents:\s*write/.test(pub))
+
+  // ---------- 回收站与二次确认（删除必须可回滚，且必须先问过用户）----------
+  const csrc = readFileSync(new URL('../src/client.jsx', import.meta.url), 'utf8')
+  const delIdx = csrc.indexOf("onAct('delete'")
+  check('删除前有二次确认（confirm 弹窗）',
+    delIdx > 0 && /confirm\(/.test(csrc.slice(Math.max(0, delIdx - 400), delIdx + 200)),
+    '删除按钮附近没有 confirm')
+  check('回收站有恢复入口', csrc.includes("onAct('restore'"))
+  check('后端提供 restore 动作', typeof store.audit.restore === 'function')
 }
 
 closeAllDb()

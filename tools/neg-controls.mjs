@@ -44,8 +44,12 @@ const cases = [
   { name: '语义通道静默失效（融合守卫会空转成永远绿）', file: 'lib/vectors.js', from: '  const idx = index || getIndex(root)', to: '  const idx = null', expect: '对比时语义通道确实可用' },
   { name: '只打 tag 不建 Release（市场条目 tarball 会 404）', file: '.github/workflows/publish.yml', from: '          gh release create "$GITHUB_REF_NAME"', to: '          true # mutated: 不建 Release', expect: '发布后建 GitHub Release 并挂 tarball' },
   { name: 'README 安装说明的 tarball 停在旧版本', file: 'README.md', from: 'releases/download/v0.2.6/memory-lattice-0.2.6.tgz', to: 'releases/download/v0.2.2/memory-lattice-0.2.2.tgz', expect: 'README 安装说明的 tarball 版本与 package.json 一致' },
-  { name: 'README 守卫数写回旧值', file: 'README.md', from: '# 267 项守卫', to: '# 237 项守卫', expect: 'README 声明的守卫数与实测一致' },
-  { name: 'README 负向控制数写回旧值', file: 'README.md', from: '（33 条）', to: '（18 条）', expect: 'README 声明的负向控制数与实际一致' },
+  // 回收站与二次确认（删除必须可回滚 / 必须先问用户）
+  { name: '回收站变成终态（删除后恢复不了）', file: 'lib/store.js', from: "  deleted: ['active', 'sleeping'],", to: "  deleted: [],", expect: '回收站里的记忆能恢复' },
+  { name: '删除不再二次确认', file: 'src/client.jsx', from: "              if (!window.confirm('移到回收站？删除后仍可在「回收站」里恢复。')) return\n              onAct('delete', m)", to: "              onAct('delete', m)", expect: '删除前有二次确认' },
+  { name: '回收站没有恢复入口', file: 'src/client.jsx', from: "            {m.status === 'deleted' && <button onClick={() => onAct('restore', m)}>恢复</button>}\n", to: "", expect: '回收站有恢复入口' },
+  { name: 'README 守卫数写回旧值', file: 'README.md', from: '# 274 项守卫', to: '# 237 项守卫', expect: 'README 声明的守卫数与实测一致' },
+  { name: 'README 负向控制数写回旧值', file: 'README.md', from: '（36 条）', to: '（18 条）', expect: 'README 声明的负向控制数与实际一致' },
 ]
 
 let bad = 0

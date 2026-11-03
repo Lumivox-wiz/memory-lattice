@@ -238,7 +238,7 @@ async function api(path, opts = {}) {
 
 const KIND_LABEL = { knowledge: '知识', decision: '决策', mistake: '踩坑', preference: '偏好', goal: '目标', trait: '特质', event: '事件', fact: '事实' }
 const KIND_COLOR = { knowledge: '#3B82F6', decision: '#10B981', mistake: '#EF4444', preference: '#A855F7', goal: '#F59E0B', trait: '#EC4899', event: '#6B7280', fact: '#06B6D4' }
-const STATUS_LABEL = { active: '生效', pending: '待审', sleeping: '沉睡', rejected: '已驳回', deleted: '回收站' }
+const STATUS_LABEL = { active: '生效', pending: '待审', sleeping: '沉睡', rejected: '已驳回', deleted: '回收站', restore: '恢复' }
 const LAYER_LABEL = { ltm: '长期', stm: '短期' }
 // 来源标注（复核建议 2：审核不该只看正文，要知道这条是怎么进来的）
 const SOURCE_LABEL = { manual: '人工手写', agent: '助手写入', auto: '自动捕获', 'auto-fallback': '自动捕获·降级', promotion: '短期晋升', migration: '旧库迁移' }
@@ -321,7 +321,11 @@ function MemoryCard({ m, onAct, selectable }) {
             {m.status === 'pending' && <><button onClick={() => onAct('approve', m)}>通过</button><button onClick={() => onAct('reject', m)}>驳回</button></>}
             {m.status === 'active' && <><button onClick={() => onAct('reinforce', m)}>强化</button><button onClick={() => onAct('sleep', m)}>沉睡</button></>}
             {m.status === 'sleeping' && <button onClick={() => onAct('awaken', m)}>唤醒</button>}
-            {m.status !== 'deleted' && <button className="ml-danger" onClick={() => onAct('delete', m)}>删除</button>}
+            {m.status !== 'deleted' && <button className="ml-danger" onClick={() => {
+              if (!window.confirm('移到回收站？删除后仍可在「回收站」里恢复。')) return
+              onAct('delete', m)
+            }}>删除</button>}
+            {m.status === 'deleted' && <button onClick={() => onAct('restore', m)}>恢复</button>}
             <span className="ml-dim">#{m.id} · {LAYER_LABEL[m.layer]} · {KIND_LABEL[m.kind] || m.kind} · {SOURCE_LABEL[m.source] || m.source || '—'} · 复习 {m.review_count} 次 · 命中 {m.hits}</span>
           </div>
         </div>
@@ -372,6 +376,7 @@ export function App({ t }) {
   const loadWorking = useCallback(() => api('/working').then((d) => d.ok && setWorking(d.items || [])), [])
   const loadQueue = useCallback(() => api('/patrol/queue').then((d) => d.ok && setQueue(d)), [])
   const patrolAct = async (action, payload) => {
+    if (action === 'delete' && !window.confirm('移到回收站？删除后仍可在「回收站」里恢复。')) return
     const r = await api('/patrol/action', { method: 'POST', body: { action, ...payload } })
     say(r.ok ? '已处理' : '失败：' + (r.error || '未知错误'))
     loadQueue(); loadOverview(); loadPatrol(); loadWorking()
