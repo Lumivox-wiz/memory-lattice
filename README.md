@@ -48,7 +48,7 @@ dsh plugin --profile desktop add memory-lattice
 装指定版本、或不想经 npm，直接用 Release 里的预构建包（不用执行构建脚本）：
 
 ```sh
-dsh plugin --profile desktop add https://github.com/Lumivox-wiz/memory-lattice/releases/download/v0.2.10/memory-lattice-0.2.10.tgz
+dsh plugin --profile desktop add https://github.com/Lumivox-wiz/memory-lattice/releases/download/v0.2.11/memory-lattice-0.2.11.tgz
 ```
 
 从源码装也可以（包管理器会询问是否执行构建脚本，选允许）：
