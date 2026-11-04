@@ -4,6 +4,8 @@ import { execFileSync } from 'node:child_process'
 import { fileURLToPath } from 'node:url'
 
 const ROOT = fileURLToPath(new URL('..', import.meta.url)).replace(/[\\/]$/, '')
+// 当前版本从 package.json 动态取 —— 写死版本号的变异点会在每次发版后失配（0.2.11 发布时踩过：CI 2 条无效）
+const pkgVersion = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8')).version
 const cases = [
   { name: '向量通道失效（sem 恒 0）', file: 'lib/store.js', from: 'const sem = semRaw > SEMANTIC_FLOOR ? Math.min(1, (semRaw - SEMANTIC_FLOOR) / SEMANTIC_SPAN) : 0', to: 'const sem = 0', expect: '向量通道补回' },
   // +2：只去掉夹紧时「能否被抓到」取决于语料统计（sqrt(bm25/qIdfSum) 是否 >1），
@@ -43,7 +45,7 @@ const cases = [
   { name: '发布工作流不再校验版本号（tag 可以名不副实）', file: '.github/workflows/publish.yml', from: 'npm pkg get version', to: 'npm pkg get name', expect: '发布工作流校验 tag 与版本号一致' },
   { name: '语义通道静默失效（融合守卫会空转成永远绿）', file: 'lib/vectors.js', from: '  const idx = index || getIndex(root)', to: '  const idx = null', expect: '对比时语义通道确实可用' },
   { name: '只打 tag 不建 Release（市场条目 tarball 会 404）', file: '.github/workflows/publish.yml', from: '          gh release create "$GITHUB_REF_NAME"', to: '          true # mutated: 不建 Release', expect: '发布后建 GitHub Release 并挂 tarball' },
-  { name: 'README 安装说明的 tarball 停在旧版本', file: 'README.md', from: 'releases/download/v0.2.10/memory-lattice-0.2.10.tgz', to: 'releases/download/v0.2.2/memory-lattice-0.2.2.tgz', expect: 'README 安装说明的 tarball 版本与 package.json 一致' },
+  { name: 'README 安装说明的 tarball 停在旧版本', file: 'README.md', from: `releases/download/v${pkgVersion}/memory-lattice-${pkgVersion}.tgz`, to: 'releases/download/v0.2.2/memory-lattice-0.2.2.tgz', expect: 'README 安装说明的 tarball 版本与 package.json 一致' },
   // 回收站与二次确认（删除必须可回滚 / 必须先问用户）
   { name: '回收站变成终态（删除后恢复不了）', file: 'lib/store.js', from: "  deleted: ['active', 'sleeping'],", to: "  deleted: [],", expect: '回收站里的记忆能恢复' },
   { name: '删除不再二次确认', file: 'src/client.jsx', from: "              if (!window.confirm('移到回收站？删除后仍可在「回收站」里恢复。')) return\n              onAct('delete', m)", to: "              onAct('delete', m)", expect: '删除前有二次确认' },
@@ -54,8 +56,8 @@ const cases = [
   { name: '列目录不再只认自家文件', file: 'lib/backup.js', from: "      if (!BACKUP_FILE_RE.test(name)) continue", to: "      if (false) continue", expect: '列目录不认非自家文件' },
   // CHANGELOG 面向使用者：内部术语不许混进来
   { name: 'CHANGELOG 里混入内部测试术语', file: 'CHANGELOG.md', from: '## [0.2.9] - 2026-11-03', to: '## [0.2.9] - 2026-11-03\n\n守卫 285 项，负向控制 39 条。', expect: 'CHANGELOG 没有开发者内部术语' },
-  { name: 'CHANGELOG 漏掉当前版本条目', file: 'CHANGELOG.md', from: '## [0.2.10] - 2026-11-03', to: '## [0.2.10-rc1] - 2026-11-03', expect: 'CHANGELOG 收录了 package.json 的当前版本' },
-  { name: 'CHANGELOG 版本顺序倒置', file: 'CHANGELOG.md', from: '## [0.2.8] - 2026-11-03', to: '## [0.2.11] - 2026-11-03', expect: 'CHANGELOG 版本条目按新到旧排列' },
+  { name: 'CHANGELOG 漏掉当前版本条目', file: 'CHANGELOG.md', from: `## [${pkgVersion}]`, to: `## [${pkgVersion}-rc1]`, expect: 'CHANGELOG 收录了 package.json 的当前版本' },
+  { name: 'CHANGELOG 版本顺序倒置', file: 'CHANGELOG.md', from: '## [0.2.8] - 2026-11-03', to: `## [${Number(pkgVersion.split('.')[0]) + 1}.0.0] - 2026-11-03`, expect: 'CHANGELOG 版本条目按新到旧排列' },
   // README 的核心章节与贡献指南（指南要求，门面不能缺件）
   { name: 'README 少了上手示例章节', file: 'README.md', from: '## 上手示例', to: '## 别的标题', expect: 'README 含指南要求的核心章节' },
   { name: 'README 少了获取帮助章节', file: 'README.md', from: '## 获取帮助', to: '## 别的标题', expect: 'README 含指南要求的核心章节' },
