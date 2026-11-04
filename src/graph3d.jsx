@@ -2,6 +2,14 @@
 // 交互：拖空白=旋转视角 / 拖节点=整理布局 / 滚轮=缩放 / 单击节点=聚焦
 // 性能：30fps 帧率上限；页面隐藏暂停；发光用径向渐变（不用 shadowBlur 高成本路径）
 import React, { useState, useEffect, useRef, useCallback } from 'react'
+import { starBrightness, starHalo, starRadiusFactor } from './starlight.js'
+
+// #rrggbb + alpha(0..1) → rgba()，用于类别云团的半透明径向渐变
+function hexA(hex, a) {
+  const h = (hex || '#8b95b0').replace('#', '')
+  const r = parseInt(h.slice(0, 2), 16), g = parseInt(h.slice(2, 4), 16), b = parseInt(h.slice(4, 6), 16)
+  return `rgba(${r},${g},${b},${Math.max(0, Math.min(1, a))})`
+}
 
 const CAM_F = 900
 const KIND_LABEL = { knowledge: '知识', decision: '决策', mistake: '踩坑', preference: '偏好', goal: '目标', trait: '特质', event: '事件', fact: '事实' }
@@ -126,6 +134,29 @@ export function NebulaGraph({ data, onSelect, selectedId, autoRotate = true, sho
         ctx.fillRect(p.sx, p.sy, 1.3, 1.3)
       }
       ctx.globalAlpha = 1
+      // 类别云团：每个 kind 一坨带色星云，画在星点之下，让「按类别区分云团」一目了然
+      const cloudA = focusSet ? 0.3 : 1
+      for (let k = 0; k < kinds.length; k++) {
+        const c = centers[k]
+        if (!c) continue
+        const p = project3(c.x, c.y, c.z, view, cx, cy)
+        if (p.s <= 0) continue
+        const color = KIND_COLOR[kinds[k]] || '#8b95b0'
+        const R = 185 * p.s
+        const g = ctx.createRadialGradient(p.sx, p.sy, R * 0.12, p.sx, p.sy, R)
+        g.addColorStop(0, hexA(color, 0.32 * cloudA))
+        g.addColorStop(0.55, hexA(color, 0.12 * cloudA))
+        g.addColorStop(1, hexA(color, 0))
+        ctx.fillStyle = g
+        ctx.beginPath(); ctx.arc(p.sx, p.sy, R, 0, Math.PI * 2); ctx.fill()
+        if (showLabels && p.s > 0.55) {
+          ctx.globalAlpha = focusSet ? 0.45 : 0.85
+          ctx.fillStyle = '#cdd6ff'
+          ctx.font = '600 13px sans-serif'; ctx.textAlign = 'center'
+          ctx.fillText(KIND_LABEL[kinds[k]] || kinds[k], p.sx, p.sy - R * 0.62)
+          ctx.globalAlpha = 1
+        }
+      }
       // 投影 + 深度排序（远→近）
       const proj = nodes.map((n) => ({ n, ...project3(n.x, n.y, n.z, view, cx, cy) }))
       proj.sort((a, b) => b.z - a.z)
@@ -143,20 +174,28 @@ export function NebulaGraph({ data, onSelect, selectedId, autoRotate = true, sho
       ctx.globalAlpha = 1
       for (const p of proj) {
         const n = p.n
-        const r = (4 + Math.min(n.strength, 5) * 2.1) * p.s
+        const r = starRadiusFactor(n.strength) * p.s
         const color = KIND_COLOR[n.kind] || '#8b95b0'
-        const a = dim(n) * (n.layer === 'stm' ? 0.55 : 1)
+        // 亮度由强度决定（starBrightness），再叠聚焦压暗与短期层略暗
+        const a = starBrightness(n.strength, n.layer) * dim(n)
         if (a <= 0.02) continue
-        // 光晕（径向渐变，零 filter）
-        const halo = ctx.createRadialGradient(p.sx, p.sy, r * 0.3, p.sx, p.sy, r * 2.8)
+        // 光晕（径向渐变，零 filter）；强度越高光晕越实、略大
+        const haloR = r * (2.6 + 0.5 * Math.min(n.strength, 4) / 4)
+        const halo = ctx.createRadialGradient(p.sx, p.sy, r * 0.3, p.sx, p.sy, haloR)
         halo.addColorStop(0, color + '66'); halo.addColorStop(1, color + '00')
-        ctx.globalAlpha = a * 0.85
+        ctx.globalAlpha = a * starHalo(n.strength)
         ctx.fillStyle = halo
-        ctx.beginPath(); ctx.arc(p.sx, p.sy, r * 2.8, 0, Math.PI * 2); ctx.fill()
+        ctx.beginPath(); ctx.arc(p.sx, p.sy, haloR, 0, Math.PI * 2); ctx.fill()
         // 本体
         ctx.globalAlpha = a
         ctx.fillStyle = color
         ctx.beginPath(); ctx.arc(p.sx, p.sy, r, 0, Math.PI * 2); ctx.fill()
+        // 强记忆加一点近白内核，强化「亮」
+        if (n.strength >= 2) {
+          ctx.globalAlpha = a * Math.min(0.9, (n.strength - 2) * 0.4 + 0.3)
+          ctx.fillStyle = '#fff'
+          ctx.beginPath(); ctx.arc(p.sx, p.sy, Math.max(1, r * 0.35), 0, Math.PI * 2); ctx.fill()
+        }
         if (n.pin) { ctx.strokeStyle = '#fff'; ctx.lineWidth = 1.5; ctx.stroke() }
         if (selectedId === n.id) { ctx.strokeStyle = '#fff'; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(p.sx, p.sy, r + 4, 0, Math.PI * 2); ctx.stroke() }
         if (showLabels && p.s > 0.75 && a > 0.5) {
@@ -218,7 +257,7 @@ export function NebulaGraph({ data, onSelect, selectedId, autoRotate = true, sho
       let best = null, bestZ = 1e9
       for (const n of nodes) {
         const p = project3(n.x, n.y, n.z, view, cx, cy)
-        const r = (4 + Math.min(n.strength, 5) * 2.1) * p.s + 4
+        const r = starRadiusFactor(n.strength) * p.s + 4
         const d = (p.sx - mx) ** 2 + (p.sy - my) ** 2
         if (d <= r * r && p.z < bestZ) { best = n; bestZ = p.z }
       }

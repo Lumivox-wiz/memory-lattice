@@ -15,6 +15,7 @@ import * as importer from '../lib/importer.js'
 import { createApi } from '../lib/api.js'
 import * as backup from '../lib/backup.js'
 import * as retention from '../lib/retention.js'
+import { starBrightness, starHalo } from '../src/starlight.js'
 
 let pass = 0, fail = 0
 const failures = []
@@ -1325,6 +1326,24 @@ const cmpVer = (a, b) => {
 }
 const ordered = chVersions.every((v, i) => i === 0 || cmpVer(chVersions[i - 1], v) > 0)
 check('CHANGELOG 版本条目按新到旧排列', ordered, chVersions.join(' → '))
+
+// ============ 16. 记忆星云优化回归（类别云团 / 强度决定亮度 / 点击显示具体信息） ============
+{
+  const gdb = getDb(ROOT)
+  gdb.prepare(`INSERT INTO memories (layer, kind, title, body, status, strength, source, created_at, updated_at) VALUES
+    ('ltm','knowledge','这是一条很长很长很长很长很长的知识标题用于验证截断与全文下发', 'b', 'active', 3.2, 'agent', '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z'),
+    ('ltm','decision','短标题决策', 'b', 'active', 1.4, 'manual', '2026-02-01T00:00:00Z', '2026-02-01T00:00:00Z'),
+    ('ltm','event','事件条目', 'b', 'active', 0.3, 'auto', '2026-03-01T00:00:00Z', '2026-03-01T00:00:00Z')`).run()
+  const g = store.graph(ROOT)
+  const kinds = new Set(g.nodes.map((n) => n.kind))
+  check('星云图节点含完整标题/状态/来源等具体信息字段', g.nodes.length >= 3 &&
+    g.nodes.every((n) => 'title' in n && 'status' in n && 'source' in n && 'created_at' in n && 'strength' in n) &&
+    g.nodes.some((n) => n.label !== n.title), `节点数=${g.nodes.length} kinds=${[...kinds].join(',')}`)
+  check('星云图按记忆类别分簇（多种 kind 同时存在）', kinds.size >= 3, `kinds=${[...kinds].join(',')}`)
+}
+check('星云：强度越高星球越亮（亮度由强度决定）', starBrightness(3) > starBrightness(1.5) && starBrightness(1.5) > starBrightness(0.2))
+check('星云：短期记忆整体比长期暗一档', starBrightness(1, 'stm') < starBrightness(1, 'ltm'))
+check('星云：强度越高光晕越强', starHalo(4) > starHalo(0.1))
 
 // +1：本条自身也算一项守卫，此刻还没计入 pass/fail —— 所以它必须是文件里最后一条检查
 const saidSmoke = Number((/npm test\s+#\s*(\d+)\s*项守卫/.exec(readme) || [])[1])

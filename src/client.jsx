@@ -60,7 +60,7 @@ const CSS = `
 .ml-tags { display: flex; gap: 4px; flex-wrap: wrap; margin-bottom: 6px; }
 .ml-tag { font-size: 10px; padding: 1px 7px; border-radius: 999px; background: rgba(59,130,246,.12); color: var(--dsw-alias-accent, #2563eb); }
 .ml-card-actions { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
-.ml-card-actions button, .ml-panel-head button, .ml-filter button, .ml-actions button, .ml-node-info button, .ml-modal-head button {
+.ml-card-actions button, .ml-panel-head button, .ml-filter button, .ml-actions button, .ml-node-card button, .ml-modal-head button {
   border: 1px solid var(--dsw-alias-border-l2, #d1d5db); background: transparent; color: inherit;
   border-radius: 7px; padding: 4px 10px; font-size: 11px; cursor: pointer; }
 .ml-card-actions button:hover, .ml-panel-head button:hover, .ml-filter button:hover { opacity: .8; }
@@ -94,12 +94,25 @@ const CSS = `
   border: 1px solid rgba(120,140,220,.18); }
 .ml-graph-legend i { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 4px;
   box-shadow: 0 0 6px currentColor; }
-.ml-node-info { position: absolute; top: 12px; right: 12px; display: flex; gap: 10px; align-items: center;
-  background: rgba(10,16,34,.72); backdrop-filter: blur(8px); border: 1px solid rgba(120,140,220,.3);
-  border-radius: 10px; padding: 8px 14px; font-size: 12px; color: #dbe3ff;
-  box-shadow: 0 6px 24px rgba(0,0,0,.4); max-width: 60%; }
-.ml-node-info span { opacity: .75; }
-.ml-node-info button { margin-left: auto; color: #dbe3ff !important; border-color: rgba(120,140,220,.4) !important; background: transparent !important; }
+.ml-node-card { position: absolute; top: 12px; right: 12px; width: min(280px, 72%);
+  display: flex; flex-direction: column; gap: 8px;
+  background: rgba(10,16,34,.82); backdrop-filter: blur(10px); border: 1px solid rgba(120,140,220,.3);
+  border-radius: 12px; padding: 12px 14px; font-size: 12px; color: #dbe3ff;
+  box-shadow: 0 8px 30px rgba(0,0,0,.5); }
+.ml-node-card-head { display: flex; align-items: flex-start; gap: 8px; }
+.ml-node-card-head b { flex: 1; line-height: 1.4; word-break: break-word; font-size: 13px; }
+.ml-node-card-head button { flex: none; color: #dbe3ff !important; border-color: rgba(120,140,220,.4) !important;
+  background: transparent !important; width: 22px; height: 22px; padding: 0; line-height: 1; border-radius: 6px; }
+.ml-node-card-chips { display: flex; flex-wrap: wrap; gap: 5px; }
+.ml-chip { font-size: 10px; padding: 1px 8px; border-radius: 999px; border: 1px solid rgba(150,165,220,.35);
+  color: #b9c4ee; font-style: normal; white-space: nowrap; }
+.ml-node-card-row { display: flex; align-items: center; gap: 8px; }
+.ml-node-card-row > span { opacity: .7; flex: none; }
+.ml-node-card-row .ml-bar { flex: 1; height: 6px; border-radius: 999px; background: rgba(255,255,255,.12); overflow: hidden; }
+.ml-node-card-row .ml-bar i { display: block; height: 100%; border-radius: 999px; }
+.ml-node-card-row b { flex: none; font-variant-numeric: tabular-nums; }
+.ml-node-card-tags { font-size: 11px; opacity: .7; word-break: break-word; line-height: 1.5; }
+.ml-node-card-meta { display: flex; flex-wrap: wrap; gap: 10px; font-size: 10px; opacity: .55; }
 .ml-graph-tools { display: flex; gap: 6px; }
 .ml-graph-tools button { border: 1px solid var(--dsw-alias-border-l2, #d1d5db); background: transparent; color: inherit;
   border-radius: 7px; padding: 4px 10px; font-size: 11px; cursor: pointer; }
@@ -242,6 +255,50 @@ const STATUS_LABEL = { active: '生效', pending: '待审', sleeping: '沉睡', 
 const LAYER_LABEL = { ltm: '长期', stm: '短期' }
 // 来源标注（复核建议 2：审核不该只看正文，要知道这条是怎么进来的）
 const SOURCE_LABEL = { manual: '人工手写', agent: '助手写入', auto: '自动捕获', 'auto-fallback': '自动捕获·降级', promotion: '短期晋升', migration: '旧库迁移' }
+
+const fmtDate = (iso) => {
+  if (!iso) return ''
+  const d = new Date(iso)
+  if (isNaN(d)) return String(iso).slice(0, 10)
+  const p = (x) => String(x).padStart(2, '0')
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`
+}
+
+// ---------- 星云选中信息卡：点击星球后展示具体信息 ----------
+function NodeInfoCard({ node, neighbors, onClose }) {
+  if (!node) return null
+  const color = KIND_COLOR[node.kind] || '#6B7280'
+  const st = Number(node.strength) || 0
+  const stPct = Math.max(4, Math.min(100, (st / 4) * 100))
+  const barColor = st >= 2 ? '#10B981' : st >= 0.6 ? '#F59E0B' : '#EF4444'
+  return (
+    <div className="ml-node-card" style={{ borderColor: color + '66' }}>
+      <div className="ml-node-card-head">
+        <b style={{ color }}>{node.title || node.label}</b>
+        <button onClick={onClose} aria-label="关闭信息卡">×</button>
+      </div>
+      <div className="ml-node-card-chips">
+        <em className="ml-chip" style={{ color, borderColor: color + '66' }}>{KIND_LABEL[node.kind] || node.kind}</em>
+        <em className="ml-chip">{LAYER_LABEL[node.layer] || node.layer}</em>
+        {node.status && <em className="ml-chip">{STATUS_LABEL[node.status] || node.status}</em>}
+        {node.source && <em className="ml-chip">{SOURCE_LABEL[node.source] || node.source}</em>}
+      </div>
+      <div className="ml-node-card-row">
+        <span>强度</span>
+        <div className="ml-bar"><i style={{ width: stPct + '%', background: barColor }} /></div>
+        <b>{st.toFixed(2)}</b>
+      </div>
+      {node.tags && node.tags.length > 0 && (
+        <div className="ml-node-card-tags">{node.tags.map((t) => '#' + t).join(' ')}</div>
+      )}
+      <div className="ml-node-card-meta">
+        {node.created_at ? <span>创建 {fmtDate(node.created_at)}</span> : null}
+        {neighbors > 0 ? <span>关联 {neighbors} 条</span> : null}
+        {node.id != null ? <span>#{node.id}</span> : null}
+      </div>
+    </div>
+  )
+}
 
 // ---------- 微型 Markdown 渲染（人格画像用） ----------
 function mdToHtml(md) {
@@ -735,11 +792,11 @@ export function App({ t }) {
           <div className="ml-graph-wrap ml-graph-nebula" style={{ height: 500 }}>
             <NebulaGraph data={graphData} onSelect={setSelectedNode} selectedId={selectedNode?.id} autoRotate={autoRotate} showLabels={showLabels} />
             {selectedNode && (
-              <div className="ml-node-info">
-                <b style={{ color: KIND_COLOR[selectedNode.kind] }}>{selectedNode.label}</b>
-                <span>{LAYER_LABEL[selectedNode.layer]} · {KIND_LABEL[selectedNode.kind]} · 强度 {selectedNode.strength.toFixed(2)}</span>
-                <button onClick={() => setSelectedNode(null)}>×</button>
-              </div>
+              <NodeInfoCard
+                node={selectedNode}
+                neighbors={graphData?.edges ? graphData.edges.filter((e) => e.a === selectedNode.id || e.b === selectedNode.id).length : 0}
+                onClose={() => setSelectedNode(null)}
+              />
             )}
           </div>
           {graphFull && createPortal(
@@ -752,11 +809,11 @@ export function App({ t }) {
                 <div className="ml-graph-wrap ml-graph-full ml-graph-nebula">
                   <NebulaGraph data={graphData} onSelect={setSelectedNode} selectedId={selectedNode?.id} autoRotate={autoRotate} showLabels={showLabels} />
                   {selectedNode && (
-                    <div className="ml-node-info">
-                      <b style={{ color: KIND_COLOR[selectedNode.kind] }}>{selectedNode.label}</b>
-                      <span>{LAYER_LABEL[selectedNode.layer]} · {KIND_LABEL[selectedNode.kind]} · 强度 {selectedNode.strength.toFixed(2)}</span>
-                      <button onClick={() => setSelectedNode(null)}>×</button>
-                    </div>
+                    <NodeInfoCard
+                      node={selectedNode}
+                      neighbors={graphData?.edges ? graphData.edges.filter((e) => e.a === selectedNode.id || e.b === selectedNode.id).length : 0}
+                      onClose={() => setSelectedNode(null)}
+                    />
                   )}
                 </div>
               </div>

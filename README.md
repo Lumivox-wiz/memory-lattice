@@ -238,8 +238,8 @@ BM25 是字面匹配，「换个说法就召回不到」是结构性死角。两
 ```bash
 npm ci                 # 安装（含 peer：dsh-tools / dsh-llm / cordis）
 npm run build          # esbuild 打包客户端 → lib/client.js（自检语法）
-npm test               # 291 项守卫（含开源交付件元数据检查）
-npm run neg            # 负向控制：逐条改坏守卫，确认对应测试真的会红（45 条）
+npm test               # 296 项守卫（含开源交付件元数据检查）
+npm run neg            # 负向控制：逐条改坏守卫，确认对应测试真的会红（47 条）
 npm run preview        # 用假数据渲染 UI 并截图到 tools/preview-*.png（改观感时用；不入库，文档截图在 docs/screenshots/）
 ```
 

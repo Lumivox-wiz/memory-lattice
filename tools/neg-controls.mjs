@@ -60,8 +60,11 @@ const cases = [
   { name: 'README 少了上手示例章节', file: 'README.md', from: '## 上手示例', to: '## 别的标题', expect: 'README 含指南要求的核心章节' },
   { name: 'README 少了获取帮助章节', file: 'README.md', from: '## 获取帮助', to: '## 别的标题', expect: 'README 含指南要求的核心章节' },
   { name: 'README 少了参与贡献章节', file: 'README.md', from: '## 参与贡献', to: '## 别的标题', expect: 'README 含指南要求的核心章节' },
-  { name: 'README 守卫数写回旧值', file: 'README.md', from: '# 291 项守卫', to: '# 237 项守卫', expect: 'README 声明的守卫数与实测一致' },
-  { name: 'README 负向控制数写回旧值', file: 'README.md', from: '（45 条）', to: '（18 条）', expect: 'README 声明的负向控制数与实际一致' },
+  { name: 'README 守卫数写回旧值', file: 'README.md', from: '# 296 项守卫', to: '# 237 项守卫', expect: 'README 声明的守卫数与实测一致' },
+  { name: 'README 负向控制数写回旧值', file: 'README.md', from: '（47 条）', to: '（18 条）', expect: 'README 声明的负向控制数与实际一致' },
+  // 记忆星云优化（类别云团 / 强度决定亮度 / 点击显示具体信息）
+  { name: '星云：强度不再决定亮度（星球变回等亮）', file: 'src/starlight.js', from: 'const base = Math.max(0.3, Math.min(1, 0.3 + s * 0.17))', to: 'const base = 0.3', expect: '星云：强度越高星球越亮（亮度由强度决定）' },
+  { name: '星云图节点丢掉状态等具体信息字段', file: 'lib/store.js', from: "    strength: Number(r.strength) || 1, tags: parseTags(r.tags), status: r.status,", to: "    strength: Number(r.strength) || 1, tags: parseTags(r.tags),", expect: '星云图节点含完整标题/状态/来源等具体信息字段' },
 ]
 
 let bad = 0
