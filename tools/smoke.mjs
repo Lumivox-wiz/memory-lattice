@@ -16,6 +16,7 @@ import { createApi } from '../lib/api.js'
 import * as backup from '../lib/backup.js'
 import * as retention from '../lib/retention.js'
 import { starBrightness, starHalo } from '../src/starlight.js'
+import { groupByKind } from '../src/group.js'
 
 let pass = 0, fail = 0
 const failures = []
@@ -1344,6 +1345,27 @@ check('CHANGELOG 版本条目按新到旧排列', ordered, chVersions.join(' →
 check('星云：强度越高星球越亮（亮度由强度决定）', starBrightness(3) > starBrightness(1.5) && starBrightness(1.5) > starBrightness(0.2))
 check('星云：短期记忆整体比长期暗一档', starBrightness(1, 'stm') < starBrightness(1, 'ltm'))
 check('星云：强度越高光晕越强', starHalo(4) > starHalo(0.1))
+
+// ---------- 审核列表按类别分组 ----------
+// 分组逻辑抽在 src/group.js（纯函数），前端审核 tab 直接用它；这里既测行为也测接线
+{
+  const mixed = [
+    { id: 1, kind: 'mistake' }, { id: 2, kind: 'knowledge' }, { id: 3, kind: 'mistake' },
+    { id: 4, kind: 'decision' }, { id: 5, kind: 'knowledge' },
+  ]
+  const g = groupByKind(mixed)
+  check('审核分组：同类记忆聚在同一组', g.every(([, items]) => items.every((m) => m.kind === items[0].kind)),
+    g.map(([k, v]) => `${k}:${v.length}`).join(','))
+  check('审核分组：组顺序按类别表（知识→决策→踩坑 …）', eq(g.map(([k]) => k), ['knowledge', 'decision', 'mistake']),
+    g.map(([k]) => k).join('>'))
+  const mistakeIds = (g.find(([k]) => k === 'mistake') || [null, []])[1].map((m) => m.id)
+  check('审核分组：组内保持原有顺序', eq(mistakeIds, [1, 3]), mistakeIds.join(','))
+  const withUnknown = groupByKind([{ id: 9, kind: 'weird' }, { id: 10, kind: 'knowledge' }])
+  check('审核分组：未知类别排在最后', withUnknown[withUnknown.length - 1][0] === 'weird',
+    withUnknown.map(([k]) => k).join('>'))
+  const gsrc = readFileSync(new URL('../src/client.jsx', import.meta.url), 'utf8')
+  check('审核面板确实按类别分组渲染', /groupByKind\(reviewItems\)/.test(gsrc))
+}
 
 // +1：本条自身也算一项守卫，此刻还没计入 pass/fail —— 所以它必须是文件里最后一条检查
 const saidSmoke = Number((/npm test\s+#\s*(\d+)\s*项守卫/.exec(readme) || [])[1])

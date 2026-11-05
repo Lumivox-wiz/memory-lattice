@@ -6,6 +6,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react'
 import { createRoot } from 'react-dom/client'
 import { createPortal } from 'react-dom'
 import { NebulaGraph } from './graph3d.jsx'
+import { groupByKind } from './group.js'
 
 const PLUGIN_ID = 'memory-lattice'
 const API = '/memory-lattice/api'
@@ -48,6 +49,11 @@ const CSS = `
 .ml-card-head { display: flex; align-items: center; gap: 8px; cursor: pointer; }
 .ml-card-title { flex: 1; font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .ml-kind-dot { width: 8px; height: 8px; border-radius: 50%; flex: none; }
+.ml-kind-group { display: flex; flex-direction: column; gap: 8px; }
+.ml-kind-group-head { display: flex; align-items: center; gap: 8px; padding-bottom: 6px;
+  border-bottom: 1px solid var(--dsw-alias-border-l1, #e5e7eb); font-size: 12px;
+  color: var(--dsw-alias-label-secondary, #6b7280); }
+.ml-kind-group-head b { font-size: 13px; color: var(--dsw-alias-label-primary, #111827); }
 .ml-card-meta { display: flex; gap: 4px; flex: none; }
 .ml-chip { font-size: 10px; font-style: normal; padding: 1px 6px; border-radius: 999px;
   background: var(--dsw-alias-bg-base, #f3f4f6); color: var(--dsw-alias-label-secondary, #666); }
@@ -681,7 +687,18 @@ export function App({ t }) {
       {tab === 'review' && (
         <div className="ml-pane">
           <div className="ml-hint">长期记忆写入与晋升都要过这里：通过 → 生效参与召回；驳回 → 进已驳回（可重新提交）。</div>
-          {reviewItems.length ? reviewItems.map((m) => <MemoryCard key={m.id} m={m} onAct={act} />) : <div className="ml-empty">审核队列是空的 ✓</div>}
+          {reviewItems.length
+            ? groupByKind(reviewItems).map(([kind, items]) => (
+              <div className="ml-kind-group" key={kind}>
+                <div className="ml-kind-group-head">
+                  <span className="ml-kind-dot" style={{ background: KIND_COLOR[kind] || '#6B7280' }} />
+                  <b>{KIND_LABEL[kind] || kind}</b>
+                  <span>{items.length} 条待审</span>
+                </div>
+                {items.map((m) => <MemoryCard key={m.id} m={m} onAct={act} />)}
+              </div>
+            ))
+            : <div className="ml-empty">审核队列是空的 ✓</div>}
         </div>
       )}
 

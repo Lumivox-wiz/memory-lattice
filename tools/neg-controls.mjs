@@ -6,6 +6,10 @@ import { fileURLToPath } from 'node:url'
 const ROOT = fileURLToPath(new URL('..', import.meta.url)).replace(/[\\/]$/, '')
 // 当前版本从 package.json 动态取 —— 写死版本号的变异点会在每次发版后失配（0.2.11 发布时踩过：CI 2 条无效）
 const pkgVersion = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8')).version
+// README 里声明的数量也动态读 —— 写死的话每次增删守卫/负向控制都要手动同步两处
+const readmeText = readFileSync(new URL('../README.md', import.meta.url), 'utf8')
+const declaredGuards = Number((/npm test\s+#\s*(\d+)\s*项守卫/.exec(readmeText) || [])[1])
+const declaredNeg = Number((/npm run neg[^\n]*?（(\d+) 条）/.exec(readmeText) || [])[1])
 const cases = [
   { name: '向量通道失效（sem 恒 0）', file: 'lib/store.js', from: 'const sem = semRaw > SEMANTIC_FLOOR ? Math.min(1, (semRaw - SEMANTIC_FLOOR) / SEMANTIC_SPAN) : 0', to: 'const sem = 0', expect: '向量通道补回' },
   // +2：只去掉夹紧时「能否被抓到」取决于语料统计（sqrt(bm25/qIdfSum) 是否 >1），
@@ -62,11 +66,13 @@ const cases = [
   { name: 'README 少了上手示例章节', file: 'README.md', from: '## 上手示例', to: '## 别的标题', expect: 'README 含指南要求的核心章节' },
   { name: 'README 少了获取帮助章节', file: 'README.md', from: '## 获取帮助', to: '## 别的标题', expect: 'README 含指南要求的核心章节' },
   { name: 'README 少了参与贡献章节', file: 'README.md', from: '## 参与贡献', to: '## 别的标题', expect: 'README 含指南要求的核心章节' },
-  { name: 'README 守卫数写回旧值', file: 'README.md', from: '# 296 项守卫', to: '# 237 项守卫', expect: 'README 声明的守卫数与实测一致' },
-  { name: 'README 负向控制数写回旧值', file: 'README.md', from: '（47 条）', to: '（18 条）', expect: 'README 声明的负向控制数与实际一致' },
+  { name: 'README 守卫数写回旧值', file: 'README.md', from: `${declaredGuards} 项守卫`, to: `${declaredGuards - 59} 项守卫`, expect: 'README 声明的守卫数与实测一致' },
+  { name: 'README 负向控制数写回旧值', file: 'README.md', from: `（${declaredNeg} 条）`, to: `（${declaredNeg - 29} 条）`, expect: 'README 声明的负向控制数与实际一致' },
   // 记忆星云优化（类别云团 / 强度决定亮度 / 点击显示具体信息）
   { name: '星云：强度不再决定亮度（星球变回等亮）', file: 'src/starlight.js', from: 'const base = Math.max(0.3, Math.min(1, 0.3 + s * 0.17))', to: 'const base = 0.3', expect: '星云：强度越高星球越亮（亮度由强度决定）' },
   { name: '星云图节点丢掉状态等具体信息字段', file: 'lib/store.js', from: "    strength: Number(r.strength) || 1, tags: parseTags(r.tags), status: r.status,", to: "    strength: Number(r.strength) || 1, tags: parseTags(r.tags),", expect: '星云图节点含完整标题/状态/来源等具体信息字段' },
+  // 审核列表按类别分组（分组逻辑在 src/group.js）
+  { name: '审核列表退化成单组（类别不分了）', file: 'src/group.js', from: "const k = m.kind || 'unknown'", to: "const k = 'all'", expect: '审核分组：同类记忆聚在同一组' },
 ]
 
 let bad = 0
